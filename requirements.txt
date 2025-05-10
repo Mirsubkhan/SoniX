@@ -1,0 +1,6 @@
+aiogram~=3.20.0.post0
+faster-whisper~=1.1.1
+python-dotenv~=1.1.0
+sympy~=1.13.3
+demucs~=4.0.1
+torch~=2.7.0+cu128

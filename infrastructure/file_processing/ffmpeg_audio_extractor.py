@@ -1,0 +1,21 @@
+import asyncio
+import os
+import uuid
+from domain.repositories.audio_extractor import IAudioExtractor
+from domain.entities.file import File
+from pathlib import Path
+
+class FFMpegAudioExtractor(IAudioExtractor):
+    def __init__(self, output_dir="./temp/audio_extracted"):
+        self.output_dir = output_dir
+        os.makedirs(self.output_dir, exist_ok=True)
+
+    async def extract_audio_from_video(self, file: File) -> Path:
+        output_path = os.path.join(self.output_dir, f"{uuid.uuid4().hex}.wav")
+
+        cmd = f'ffmpeg -y -i "{file.file_path}" -vn -acodec pcm_s16le -ar 16000 -ac 1 "{output_path}"'
+
+        proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+        await proc.communicate()
+
+        return Path(output_path)
