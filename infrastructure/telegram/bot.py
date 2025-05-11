@@ -3,7 +3,7 @@ import os
 from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
 from aiogram.fsm.storage.memory import MemoryStorage
-from presentation.telegram.handlers import callbacks, commands, messages
+from infrastructure.telegram.handlers import messages, callbacks, commands
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiohttp import ClientTimeout
 

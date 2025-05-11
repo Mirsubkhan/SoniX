@@ -1,5 +1,4 @@
 import logging
-import os
 import traceback
 from datetime import timedelta
 from pathlib import Path
@@ -8,9 +7,9 @@ from aiogram import Router, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from presentation.telegram.inline_keyboard import video_process_keyboard, photo_process_keyboard, audio_process_keyboard
-from presentation.telegram.fsm_states import FileProcessing
-from domain.entities.file import File, FileType
+from infrastructure.telegram.inline_keyboard import video_process_keyboard, photo_process_keyboard, audio_process_keyboard
+from infrastructure.telegram.fsm_states import FileProcessing
+from core.entities.file import File, FileType
 
 router = Router()
 
@@ -36,7 +35,6 @@ async def _download_file(bot: Bot, file_id, file_format: str) -> Path:
     dest = downloads_dir / f"{file.file_id}.{file_format}"
     dest = dest.absolute()
 
-    # print(f"Downloading file to: {dest}")
     await bot.download_file(file.file_path, destination=dest)
 
     return dest
@@ -97,18 +95,3 @@ async def warn_message(message: Message):
         ),
         parse_mode="HTML"
     )
-
-
-# if file.file_type == FileType.AUDIO or file.file_format != "wav":
-#     old_path = file.file_path
-#
-#     if file.file_type == FileType.VIDEO:
-#         audio_extractor = FFMpegAudioExtractor()
-#         file.file_path = await ExtractAudioFromVideoUseCase(audio_extractor).extract(file)
-#         file.file_type = FileType.AUDIO
-#
-#     if file.file_format != "wav":
-#         audio_converter = FFMpegAudioConverter()
-#         file.file_path = await ConvertAudioToWavUseCase(audio_converter).convert(file)
-#
-#     os.remove(old_path)

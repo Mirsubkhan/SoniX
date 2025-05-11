@@ -2,23 +2,50 @@ import os
 
 from aiogram import Router
 
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
-from humanfriendly.terminal import message
 
-from infrastructure.file_processing.demucs_separator import DemucsSeparator
-from infrastructure.file_processing.faster_whisper_transcriber import FasterWhisperTranscriber
-from presentation.telegram.inline_keyboard import return_as_file_keyboard, transform_options_keyboard
-from use_cases.demucs_separator_use_case import DemucsSeparatorUseCase
-from presentation.telegram.fsm_states import FileProcessing
-from domain.entities.file import File
-from use_cases.transcribe_audio_use_case import TranscribeAudioUseCase
-from infrastructure.file_processing.ffmpeg_audio_converter import FFMpegAudioConverter
-from infrastructure.file_processing.ffmpeg_audio_extractor import FFMpegAudioExtractor
-from use_cases.extract_audio_from_video_use_case import ExtractAudioFromVideoUseCase
-from use_cases.convert_audio_to_wav_use_case import ConvertAudioToWavUseCase
+from interfaces_adapters.ports_impl.demucs_separator import DemucsSeparator
+from interfaces_adapters.ports_impl.faster_whisper_transcriber import FasterWhisperTranscriber
+from infrastructure.telegram.inline_keyboard import return_as_file_keyboard
+from application.use_cases.demucs_separator_use_case import DemucsSeparatorUseCase
+from core.entities.file import File
+from application.use_cases.faster_whisper_transcriber_use_case import TranscribeAudioUseCase
 
 router = Router()
+
+async def progress_callback(percent: int):
+    hearts = "💚" * (percent // 10) + "🤍" * (10 - (percent // 10))
+    try:
+        await bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=edit_msg.message_id,
+            text=f"🎧 Разделение музыки...\n{hearts} {percent}%"
+        )
+    except Exception as e:
+        pass
+
+async def transcribe_progress_callback(filled: int):
+    hearts = "💚" * filled + "🤍" * (filled - 10)
+
+    try:
+        await bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=edit_msg.message_id,
+            text=f"📝 Транскрибация аудио...\n{hearts} {filled * 10}%"
+        )
+    except Exception as e:
+        pass
+
+async def dynamic_progress_callback(text: str):
+    try:
+        await bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=edit_msg.message_id,
+            text=text
+        )
+    except Exception as e:
+        edit_msg = await message.answer()
 
 @router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "remove_noise", "separate"])
 async def handle_file(callback: CallbackQuery, state: FSMContext):

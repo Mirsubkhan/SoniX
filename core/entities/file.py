@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from enum import Enum
 
@@ -14,7 +14,7 @@ class OperationType(Enum):
     TRANSFORM_TO_ASKII = "transform_to_askii"
     REMOVE_BG = "remove_bg"
     REMOVE_NOISE = "remove_noise"
-    T_NONE = "none"
+    NO_OP = "none"
 
 @dataclass
 class File:
@@ -22,6 +22,6 @@ class File:
     file_id: str
     file_path: Path
     file_type: FileType
-    file_duration: timedelta
+    file_duration: timedelta | None
     file_format: str
-    operation: OperationType = OperationType.T_NONE
+    operation: OperationType = OperationType.NO_OP
