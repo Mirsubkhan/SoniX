@@ -27,6 +27,7 @@ class DemucsSeparator(AudioSeparator):
         )
 
         progress_bars_completed = 0
+        last_update = asyncio.get_event_loop().time()
 
         while True:
             line = await process.stdout.readline()
@@ -39,11 +40,13 @@ class DemucsSeparator(AudioSeparator):
                 progress_bars_completed += 1
                 total_progress_percent = progress_bars_completed * 25
                 total_progress_percent = min(total_progress_percent, 100)
-
-                try:
-                    await on_progress(total_progress_percent)
-                except Exception as e:
-                    print(f"Ошибка при вызове on_progress: {e}")
+                now = asyncio.get_event_loop().time()
+                if now - last_update >= 2:
+                    try:
+                        await on_progress(total_progress_percent)
+                        last_update = now
+                    except Exception as e:
+                        pass
 
         await process.wait()
 

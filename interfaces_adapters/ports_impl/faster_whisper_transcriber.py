@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import traceback
 from pathlib import Path
 import aiofiles
 from faster_whisper import WhisperModel
@@ -42,9 +44,15 @@ class FasterWhisperTranscriber(AudioTranscriber):
 
             now = asyncio.get_event_loop().time()
 
-            if now - last_time >= 2:
-                await on_progress(current_text.strip())
-                last_time = now
+            if now - last_time >= 2.0:
+                try:
+                    # Короче, except вызывается здесь, но не там.
+                    await on_progress(current_text.strip())
+                    last_time = now
+                except Exception as e:
+                    await on_progress(current_text.strip())
+                    last_time = now
+                    continue
 
 
     async def transcribe(self, file: File, on_progress: TranscribeProgressCallback) -> Path:
@@ -58,6 +66,7 @@ class FasterWhisperTranscriber(AudioTranscriber):
         full_text = ""
         total_secs = file.file_duration.total_seconds()
         seconds_per_heart = total_secs / 10
+        last_update = asyncio.get_event_loop().time()
 
         for seg in segments_raw:
             if not seg.text.strip():
@@ -66,11 +75,14 @@ class FasterWhisperTranscriber(AudioTranscriber):
             full_text += " " + seg.text.strip()
             filled_hearts = int(seg.end / seconds_per_heart)
             current_filled = min(filled_hearts, 10)
-
-            try:
-                await on_progress(current_filled)
-            except Exception as e:
-                print(f"Ошибка при вызове on_progress: {e}")
+            print(current_filled)
+            now = asyncio.get_event_loop().time()
+            if now - last_update >= 2:
+                try:
+                    await on_progress(current_filled)
+                except Exception as e:
+                    # traceback.print_exc() эррорит постоянно
+                    continue
 
         text_path = file.file_path.with_suffix(".txt")
         async with aiofiles.open(text_path, "w") as f:

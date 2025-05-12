@@ -1,5 +1,6 @@
 import logging
 import traceback
+import uuid
 from datetime import timedelta
 from pathlib import Path
 
@@ -32,7 +33,7 @@ KEYBOARD_MAP = {
 async def _download_file(bot: Bot, file_id, file_format: str) -> Path:
     file = await bot.get_file(file_id=file_id)
 
-    dest = downloads_dir / f"{file.file_id}.{file_format}"
+    dest = downloads_dir / f"{uuid.uuid4()}.{file_format}"
     dest = dest.absolute()
 
     await bot.download_file(file.file_path, destination=dest)
@@ -70,7 +71,7 @@ async def media_handler(message: Message, state: FSMContext):
         file_path=file_path,
         file_type=file_type,
         file_format=file_format,
-        file_duration=timedelta(seconds=0 if message.photo else message_file.duration)
+        file_duration=None if message.photo else timedelta(seconds=message_file.duration)
     )
 
     print(f"{file.file_id}\n{file.file_path}\n{file.file_type}\n{file.file_format}\n{file.user_id}\n{file.file_duration}")

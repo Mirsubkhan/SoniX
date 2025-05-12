@@ -1,4 +1,3 @@
-import asyncio
 import os
 from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
@@ -32,6 +31,3 @@ async def main():
         await dp.start_polling(bot)
     finally:
         await bot.session.close()
-
-if __name__ == "__main__":
-    asyncio.run(main())
