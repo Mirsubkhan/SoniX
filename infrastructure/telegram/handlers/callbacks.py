@@ -20,6 +20,7 @@ router = Router()
 
 @router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "remove_noise", "separate"])
 async def handle_file(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
     await callback.answer()
 
     data = await state.get_data()
@@ -89,6 +90,7 @@ async def handle_file(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(lambda f: f.data in ['file', 'no_file'])
 async def transcribe_callback(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
     await callback.answer()
 
     data = await state.get_data()
@@ -115,23 +117,24 @@ async def transcribe_callback(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer_document(FSInputFile(result), caption="📝 Транскрибация файла готова!")
         await callback.bot.delete_message(chat_id=edit_msg.chat.id, message_id=edit_msg.message_id)
     else:
-        async def dynamic_progress_callback(text: str):
-            nonlocal message_id
-            try:
+        async def dynamic_progress_callback(text: str, is_full: bool):
+            nonlocal message_id, edit_msg
+
+            if not is_full:
                 await callback.bot.edit_message_text(
                     chat_id=callback.message.chat.id,
                     message_id=message_id,
                     text=text
                 )
-            except Exception as e:
-                # traceback.print_exc()
-                new_edit_msg = await callback.message.answer(text.removeprefix(edit_msg.text).strip())
+            else:
+                new_edit_msg = await callback.message.answer(text)
                 message_id = new_edit_msg.message_id
 
         await TranscribeAudioUseCase(transcriber=transcriber).transcribe_dynamic(file, on_progress=dynamic_progress_callback)
 
 @router.callback_query(lambda f: f.data in ("color", "no_color"))
 async def convert_to_ascii_callback(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
     await callback.answer()
 
     data = await state.get_data()

@@ -34,25 +34,18 @@ class FasterWhisperTranscriber(AudioTranscriber):
 
             text_part = seg.text.strip()
 
-            s = TranscriptionSegment(
-                start=timedelta(seconds=seg.start),
-                end=timedelta(seconds=seg.end),
-                text=text_part
-            )
-
             current_text += " " + text_part
 
             now = asyncio.get_event_loop().time()
 
             if now - last_time >= 2.0:
-                try:
-                    # Короче, except вызывается здесь, но не там.
-                    await on_progress(current_text.strip())
-                    last_time = now
-                except Exception as e:
-                    await on_progress(current_text.strip())
-                    last_time = now
-                    continue
+                if len(current_text) <= 4096:
+                    await on_progress(current_text, False)
+                else:
+                    current_text = text_part
+                    await on_progress(current_text, True)
+
+                last_time = now
 
 
     async def transcribe(self, file: File, on_progress: TranscribeProgressCallback) -> Path:
@@ -81,7 +74,6 @@ class FasterWhisperTranscriber(AudioTranscriber):
                 try:
                     await on_progress(current_filled)
                 except Exception as e:
-                    # traceback.print_exc() эррорит постоянно
                     continue
 
         text_path = file.file_path.with_suffix(".txt")

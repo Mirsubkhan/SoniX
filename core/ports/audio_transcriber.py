@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Callable, Awaitable
 
 TranscribeProgressCallback = Callable[[int], Awaitable[None]]
-DynamicProgressCallback = Callable[[str], Awaitable[None]]
+DynamicProgressCallback = Callable[[str, bool], Awaitable[None]]
 
 class AudioTranscriber(ABC):
     @abstractmethod
