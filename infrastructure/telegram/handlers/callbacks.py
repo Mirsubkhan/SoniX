@@ -2,12 +2,15 @@ import os
 from aiogram import Router
 from aiogram.types import CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
+from redis.asyncio import Redis
 
 from application.use_cases.ffmpeg_audio_extractor_use_case import FFMpegAudioExtractorUseCase
+from application.use_cases.redis_use_case import RedisUseCase
 from core.entities.file_dto import FileInputDTO
 from core.ports.audio_extractor import AudioExtractor
 from core.ports.audio_separator import AudioSeparator
 from core.ports.audio_transcriber import AudioTranscriber
+from core.ports.file_storage import FileStorage
 from core.ports.photo_style_converter import PhotoStyleConverter
 from infrastructure.telegram.bot_answers import data_lost, transcribe_options, listening_file, demucs_error, \
     ascii_options, ascii_wait_message, ascii_ready, transcribe_ready
@@ -24,18 +27,18 @@ def setup_handlers(
         photo_style_converter: PhotoStyleConverter,
         separator: AudioSeparator,
         progress_bar: TelegramProgressBarRenderer,
+        client: FileStorage
 ):
     @router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "remove_noise", "separate"])
-    async def handle_file(callback: CallbackQuery, state: FSMContext):
+    async def handle_file(callback: CallbackQuery):
         await callback.message.delete()
         await callback.answer()
 
-        data = await state.get_data()
-        file: FileInputDTO = data.get("file")
+        redis = RedisUseCase(redis=client)
+        file = await redis.get_file_by_uid(user_id=callback.message.from_user.id)
 
         if not file:
             await callback.message.answer(text=data_lost, parse_mode="HTML")
-            await state.clear()
             return
 
         action = callback.data.lower()
@@ -61,7 +64,7 @@ def setup_handlers(
                 await callback.message.answer_document(FSInputFile(file_output.file_path.joinpath("no_vocals.mp3")))
                 await callback.bot.delete_message(message_id=edit_msg.message_id, chat_id=callback.message.chat.id)
 
-                os.remove(file_output.file_path)
+                await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
             else:
                 await callback.message.answer(demucs_error)
 
@@ -74,12 +77,12 @@ def setup_handlers(
 
 
     @router.callback_query(lambda f: f.data in ['file', 'no_file'])
-    async def transcribe_callback(callback: CallbackQuery, state: FSMContext):
+    async def transcribe_callback(callback: CallbackQuery):
         await callback.message.delete()
         await callback.answer()
 
-        data = await state.get_data()
-        file: FileInputDTO = data.get("file")
+        redis = RedisUseCase(redis=client)
+        file = await redis.get_file_by_uid(user_id=callback.message.from_user.id)
         action = callback.data.lower()
 
         edit_msg = await callback.message.answer(text=listening_file, parse_mode="HTML")
@@ -94,13 +97,15 @@ def setup_handlers(
         else:
             await TranscribeAudioUseCase(transcriber=transcriber, extractor=FFMpegAudioExtractorUseCase(extractor=extractor)).transcribe_dynamic(file, on_progress=progress_bar.dynamic_whisper_progress_callback)
 
+        await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
+
     @router.callback_query(lambda f: f.data in ("color", "no_color"))
-    async def convert_to_ascii_callback(callback: CallbackQuery, state: FSMContext):
+    async def convert_to_ascii_callback(callback: CallbackQuery):
         await callback.message.delete()
         await callback.answer()
 
-        data = await state.get_data()
-        file: FileInputDTO = data.get("file")
+        redis = RedisUseCase(redis=client)
+        file = await redis.get_file_by_uid(user_id=callback.message.from_user.id)
         action = callback.data.lower()
 
         edit_msg = await callback.message.answer(ascii_wait_message, parse_mode="HTML")
@@ -112,5 +117,6 @@ def setup_handlers(
 
         await callback.message.answer_document(FSInputFile(file_output.file_path), caption=ascii_ready, parse_mode="HTML")
         await callback.bot.delete_message(chat_id=edit_msg.chat.id, message_id=edit_msg.message_id)
+        await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
 
     return router

@@ -1,10 +1,14 @@
+import traceback
 from datetime import timedelta
 
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
+from redis.asyncio import Redis
 
+from application.use_cases.redis_use_case import RedisUseCase
 from core.entities.file_dto import FileInputDTO
+from core.ports.file_storage import FileStorage
 from infrastructure.telegram.bot_answers import loading_file, file_download_error, file_downloaded, unsupported_file
 from infrastructure.telegram.fsm_states import FileProcessing
 from core.entities.file import File
@@ -14,9 +18,9 @@ from infrastructure.telegram.services.file_worker import TelegramFileWorker
 media_filter = F.video | F.audio | F.video_note | F.voice | F.photo
 not_supported_filter = ~(F.video | F.audio | F.video_note | F.voice | F.photo | F.text)
 
-def setup_handlers(router: Router, file_worker: TelegramFileWorker):
+def setup_handlers(router: Router, file_worker: TelegramFileWorker, client: FileStorage):
     @router.message(media_filter)
-    async def media_handler(message: Message, state: FSMContext):
+    async def media_handler(message: Message):
         message_file = message.audio or message.video or message.voice or message.video_note
         edit_msg = await message.reply(text=loading_file, parse_mode="HTML")
 
@@ -41,10 +45,7 @@ def setup_handlers(router: Router, file_worker: TelegramFileWorker):
                   f"{file.user_id}\n"
                   f"{file.file_duration}")
 
-            file_input = FileInputDTO(file_path = file.file_path, file_type=file.file_type, file_duration=file.file_duration)
-
-            await state.set_state(FileProcessing.file_received)
-            await state.update_data(file=file_input)
+            await RedisUseCase(redis=client).save(file=file)
 
             await message.reply(
                 text=file_downloaded,
@@ -52,7 +53,8 @@ def setup_handlers(router: Router, file_worker: TelegramFileWorker):
                 parse_mode="HTML"
             )
         except Exception as e:
-            await message.reply(text=file_download_error)
+            traceback.print_exc()
+            await message.reply(text=file_download_error, parse_mode="HTML")
         finally:
             await message.bot.delete_message(message_id=edit_msg.message_id, chat_id=message.from_user.id)
             return

@@ -3,6 +3,7 @@ from aiogram import Bot, Dispatcher, Router
 from aiogram.fsm.context import FSMContext
 from dotenv import load_dotenv
 from aiogram.fsm.storage.memory import MemoryStorage
+from redis.asyncio import Redis
 
 from core.ports.audio_transcriber import AudioTranscriber
 from infrastructure.telegram.handlers import messages, callbacks, commands
@@ -15,13 +16,17 @@ from interfaces_adapters.ports_impl.ascii_converter import AsciiConverter
 from interfaces_adapters.ports_impl.demucs_separator import DemucsSeparator
 from interfaces_adapters.ports_impl.faster_whisper_transcriber import FasterWhisperTranscriber
 from interfaces_adapters.ports_impl.ffmpeg_audio_extractor import FFMpegAudioExtractor
+from interfaces_adapters.ports_impl.redis_file_storage import RedisFileStorage
 
 timeout = ClientTimeout(total=60)
 session = AiohttpSession(timeout=60)
+client = Redis()
+
 
 async def on_shutdown(dp: Dispatcher):
     await dp.storage.close()
     await session.close()
+    await client.close()
 
 async def main():
     load_dotenv()
@@ -29,16 +34,20 @@ async def main():
     bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'), session=session)
     dp = Dispatcher(storage=MemoryStorage())
 
+
+
     dp.include_routers(
         commands.setup_handlers(router=Router()),
         messages.setup_handlers(router=Router(),
-                                file_worker=TelegramFileWorker()),
+                                file_worker=TelegramFileWorker(),
+                                client=RedisFileStorage(redis=client)),
         callbacks.setup_handlers(router=Router(),
                                  transcriber=FasterWhisperTranscriber(),
                                  extractor=FFMpegAudioExtractor(),
                                  photo_style_converter=AsciiConverter(),
                                  separator=DemucsSeparator(),
-                                 progress_bar=TelegramProgressBarRenderer())
+                                 progress_bar=TelegramProgressBarRenderer(),
+                                 client=RedisFileStorage(redis=client))
     )
     dp.shutdown.register(on_shutdown)
 
