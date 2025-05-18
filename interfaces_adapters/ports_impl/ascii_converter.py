@@ -1,10 +1,8 @@
-import asyncio
-
 from core.ports.photo_style_converter import PhotoStyleConverter
-from pathlib import Path
 from core.entities.file import File
 from PIL import Image, ImageFont, ImageDraw
 import numpy as np
+from core.entities.file_dto import FileInputDTO, FileOutputDTO
 
 ASCII_CHARS = r"$@B%8&WM#*oahkbdpqwmZ0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. "[::-1]
 
@@ -39,10 +37,10 @@ class AsciiConverter(PhotoStyleConverter):
 
         return ascii_image
 
-    async def convert_image_to_ascii(self, file: File, add_color: bool = False) -> Path:
-        image = Image.open(file.file_path).convert("RGB")
+    async def convert_image_to_ascii(self, file_input: FileInputDTO, add_color: bool = False) -> FileOutputDTO:
+        image = Image.open(file_input.file_path).convert("RGB")
 
-        target_char_width = 300 if add_color else 150
+        target_char_width = 260
         bbox = self.font.getbbox("A")
         char_width = bbox[2] - bbox[0]
         char_height = bbox[3] - bbox[1]
@@ -53,7 +51,7 @@ class AsciiConverter(PhotoStyleConverter):
 
         ascii_img = await self.map_pixels_to_ascii(image, add_color)
 
-        output_path = file.file_path.with_stem(file.file_path.stem + "_ascii").with_suffix(".png")
-        ascii_img.save(output_path)
+        file_output = FileOutputDTO(file_path = file_input.file_path.with_stem(file_input.file_path.stem + "_ascii").with_suffix(".png"))
+        ascii_img.save(file_output.file_path)
 
-        return output_path
+        return file_output

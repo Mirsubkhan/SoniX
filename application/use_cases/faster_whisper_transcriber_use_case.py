@@ -2,25 +2,24 @@ from core.entities.file import File
 from core.ports.audio_transcriber import AudioTranscriber, DynamicProgressCallback, TranscribeProgressCallback
 from pathlib import Path
 from application.use_cases.ffmpeg_audio_extractor_use_case import FFMpegAudioExtractorUseCase
-from interfaces_adapters.ports_impl.ffmpeg_audio_extractor import FFMpegAudioExtractor
+from core.entities.file_dto import FileInputDTO, FileOutputDTO
 
 class TranscribeAudioUseCase:
-    def __init__(self, transcriber: AudioTranscriber):
+    def __init__(self, transcriber: AudioTranscriber, extractor: FFMpegAudioExtractorUseCase):
         self.transcriber = transcriber
+        self.extractor = extractor
 
-    async def _extract_audio(self, file: File) -> File:
-        if file.file_type.VIDEO:
-            extractor = FFMpegAudioExtractor()
+    async def _extract_audio(self, file_input: FileInputDTO) -> FileInputDTO:
+        if file_input.file_type.VIDEO:
+            file_output = await self.extractor.extract(file_input=file_input)
+            file_input.file_path = file_output.file_path
 
-            result_path = await FFMpegAudioExtractorUseCase(extractor=extractor).extract(file=file)
-            file.file_path = result_path
+        return file_input
 
-        return file
+    async def transcribe_dynamic(self, file_input: FileInputDTO, on_progress: DynamicProgressCallback):
+        file_input = await self._extract_audio(file_input=file_input)
+        return await self.transcriber.transcribe_dynamic(file_input, on_progress=on_progress)
 
-    async def transcribe_dynamic(self, file: File, on_progress: DynamicProgressCallback):
-        file = await self._extract_audio(file=file)
-        return await self.transcriber.transcribe_dynamic(file, on_progress=on_progress)
-
-    async def transcribe(self, file: File, on_progress: TranscribeProgressCallback) -> Path:
-        file = await self._extract_audio(file=file)
-        return await self.transcriber.transcribe(file=file, on_progress=on_progress)
+    async def transcribe(self, file_input: FileInputDTO, on_progress: TranscribeProgressCallback) -> FileOutputDTO:
+        file_input = await self._extract_audio(file_input=file_input)
+        return await self.transcriber.transcribe(file_input=file_input, on_progress=on_progress)

@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
 from PIL import Image
-from core.entities.file import File
+from core.entities.file_dto import FileInputDTO, FileOutputDTO
 
 class PhotoStyleConverter(ABC):
     @abstractmethod
@@ -9,5 +8,5 @@ class PhotoStyleConverter(ABC):
         pass
 
     @abstractmethod
-    async def convert_image_to_ascii(self, file: File, add_color: bool=False) -> Path:
+    async def convert_image_to_ascii(self, file_input: FileInputDTO, add_color: bool=False) -> FileOutputDTO:
         pass

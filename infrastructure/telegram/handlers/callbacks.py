@@ -1,150 +1,116 @@
-import logging
 import os
-import traceback
-
 from aiogram import Router
-
 from aiogram.types import CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 
-from interfaces_adapters.ports_impl.demucs_separator import DemucsSeparator
-from interfaces_adapters.ports_impl.faster_whisper_transcriber import FasterWhisperTranscriber
+from application.use_cases.ffmpeg_audio_extractor_use_case import FFMpegAudioExtractorUseCase
+from core.entities.file_dto import FileInputDTO
+from core.ports.audio_extractor import AudioExtractor
+from core.ports.audio_separator import AudioSeparator
+from core.ports.audio_transcriber import AudioTranscriber
+from core.ports.photo_style_converter import PhotoStyleConverter
+from infrastructure.telegram.bot_answers import data_lost, transcribe_options, listening_file, demucs_error, \
+    ascii_options, ascii_wait_message, ascii_ready, transcribe_ready
+from infrastructure.telegram.services.progress_bar import TelegramProgressBarRenderer
 from infrastructure.telegram.inline_keyboard import return_as_file_keyboard, transform_options_keyboard
 from application.use_cases.demucs_separator_use_case import DemucsSeparatorUseCase
 from application.use_cases.ascii_converter_use_case import AsciiConverterUseCase
-from interfaces_adapters.ports_impl.ascii_converter import AsciiConverter
-from core.entities.file import File
 from application.use_cases.faster_whisper_transcriber_use_case import TranscribeAudioUseCase
 
-router = Router()
+def setup_handlers(
+        router: Router,
+        transcriber: AudioTranscriber,
+        extractor: AudioExtractor,
+        photo_style_converter: PhotoStyleConverter,
+        separator: AudioSeparator,
+        progress_bar: TelegramProgressBarRenderer,
+):
+    @router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "remove_noise", "separate"])
+    async def handle_file(callback: CallbackQuery, state: FSMContext):
+        await callback.message.delete()
+        await callback.answer()
 
-@router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "remove_noise", "separate"])
-async def handle_file(callback: CallbackQuery, state: FSMContext):
-    await callback.message.delete()
-    await callback.answer()
+        data = await state.get_data()
+        file: FileInputDTO = data.get("file")
 
-    data = await state.get_data()
-    file: File = data.get("file")
+        if not file:
+            await callback.message.answer(text=data_lost, parse_mode="HTML")
+            await state.clear()
+            return
 
-    if not file:
-        await callback.message.answer(
-            text=(
-            "<b>Упс!</b>\n\n"
-            "Данные к файлу где-то затерялись. "
-            "Скинь его снова, пожалуйста 🥺"
-            ),
-            parse_mode="HTML"
-        )
-        await state.clear()
-        return
+        action = callback.data.lower()
 
-    action = callback.data.lower()
+        if action == "transcribe":
+            await callback.message.answer(
+                text=transcribe_options,
+                reply_markup=return_as_file_keyboard,
+                parse_mode="HTML"
+            )
 
-    if action == "transcribe":
-        await callback.message.answer(
-            text=(
-                "<b>Отлично!</b>\n\n"
-                "Тебе результат скинуть файлом (.txt) или в этом чате (динамично)?"
-            ),
-            reply_markup=return_as_file_keyboard,
-            parse_mode="HTML"
-        )
+        elif action == "separate":
+            await callback.message.edit_reply_markup()
+            edit_msg = await callback.message.answer(listening_file, parse_mode="HTML")
+            progress_bar.bot = callback.bot
+            progress_bar.message_id = edit_msg.message_id
+            progress_bar.chat_id = callback.message.chat.id
+            file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration, file_type=file.file_type)
+            file_output = await DemucsSeparatorUseCase(separator=separator).separate(file_input, on_progress=progress_bar.demucs_progress_callback)
 
-    elif action == "separate":
-        await callback.message.edit_reply_markup()
-        edit_msg = await callback.message.answer("Слушаю музыку...")
+            if file_output:
+                await callback.message.answer_document(FSInputFile(file_output.file_path.joinpath("vocals.mp3")))
+                await callback.message.answer_document(FSInputFile(file_output.file_path.joinpath("no_vocals.mp3")))
+                await callback.bot.delete_message(message_id=edit_msg.message_id, chat_id=callback.message.chat.id)
 
-        async def progress_callback(percent: int):
-            hearts = "💚" * (percent // 10) + "🤍" * (10 - (percent // 10))
-            try:
-                await callback.bot.edit_message_text(
-                    chat_id=callback.message.chat.id,
-                    message_id=edit_msg.message_id,
-                    text=f"🎧 Разделение музыки...\n{hearts} | {percent}%"
-                )
-            except Exception as e:
-                pass
+                os.remove(file_output.file_path)
+            else:
+                await callback.message.answer(demucs_error)
 
-        separator = DemucsSeparator()
-        separated_path = await DemucsSeparatorUseCase(separator=separator).separate(file, on_progress=progress_callback)
-
-        if separated_path:
-            await callback.bot.delete_message(message_id=edit_msg.message_id, chat_id=file.user_id)
-            await callback.message.answer_document(FSInputFile(separated_path.joinpath("vocals.mp3")))
-            await callback.message.answer_document(FSInputFile(separated_path.joinpath("no_vocals.mp3")))
-
-            os.remove(separated_path)
-        else:
-            await callback.message.answer("Чёт не получилось извлечь вокал/инструментал из музыки 😬")
-
-    elif action == "transform_to_ascii":
-        await callback.message.answer(
-            text=(
-                "<b>Отлично!</b>\n\n"
-                "Тебе результат скинуть в чёрно-белом ASCII или в цветом ASCII варианте?"
-            ),
-            reply_markup=transform_options_keyboard,
-            parse_mode="HTML"
-        )
-
-
-@router.callback_query(lambda f: f.data in ['file', 'no_file'])
-async def transcribe_callback(callback: CallbackQuery, state: FSMContext):
-    await callback.message.delete()
-    await callback.answer()
-
-    data = await state.get_data()
-    file: File = data.get("file")
-    action = callback.data.lower()
-
-    edit_msg = await callback.message.answer("Слушаю файл...")
-    message_id = edit_msg.message_id
-    transcriber = FasterWhisperTranscriber()
-
-    if action == "file":
-        async def transcribe_progress_callback(filled: int):
-            hearts = "💚" * filled + "🤍" * (10 - filled)
-            res = f"📝 Транскрибация...\n{hearts} | {filled * 10}%"
-
-            await callback.bot.edit_message_text(
-                chat_id=callback.message.chat.id,
-                message_id=message_id,
-                text=res
+        elif action == "transform_to_ascii":
+            await callback.message.answer(
+                text=ascii_options,
+                reply_markup=transform_options_keyboard,
+                parse_mode="HTML"
             )
 
 
-        result = await TranscribeAudioUseCase(transcriber=transcriber).transcribe(file, on_progress=transcribe_progress_callback)
-        await callback.message.answer_document(FSInputFile(result), caption="📝 Транскрибация файла готова!")
+    @router.callback_query(lambda f: f.data in ['file', 'no_file'])
+    async def transcribe_callback(callback: CallbackQuery, state: FSMContext):
+        await callback.message.delete()
+        await callback.answer()
+
+        data = await state.get_data()
+        file: FileInputDTO = data.get("file")
+        action = callback.data.lower()
+
+        edit_msg = await callback.message.answer(text=listening_file, parse_mode="HTML")
+        progress_bar.bot = callback.bot
+        progress_bar.message_id = edit_msg.message_id
+        progress_bar.chat_id = callback.message.chat.id
+
+        if action == "file":
+            file_output = await TranscribeAudioUseCase(transcriber=transcriber, extractor=FFMpegAudioExtractorUseCase(extractor=extractor)).transcribe(file, on_progress=progress_bar.static_whisper_progress_callback)
+            await callback.message.answer_document(FSInputFile(file_output.file_path), caption=transcribe_ready, parse_mode="HTML")
+            await callback.bot.delete_message(chat_id=edit_msg.chat.id, message_id=edit_msg.message_id)
+        else:
+            await TranscribeAudioUseCase(transcriber=transcriber, extractor=FFMpegAudioExtractorUseCase(extractor=extractor)).transcribe_dynamic(file, on_progress=progress_bar.dynamic_whisper_progress_callback)
+
+    @router.callback_query(lambda f: f.data in ("color", "no_color"))
+    async def convert_to_ascii_callback(callback: CallbackQuery, state: FSMContext):
+        await callback.message.delete()
+        await callback.answer()
+
+        data = await state.get_data()
+        file: FileInputDTO = data.get("file")
+        action = callback.data.lower()
+
+        edit_msg = await callback.message.answer(ascii_wait_message, parse_mode="HTML")
+        progress_bar.bot = callback.bot
+        progress_bar.message_id = edit_msg.message_id
+        progress_bar.chat_id = callback.message.chat.id
+
+        file_output = await AsciiConverterUseCase(converter=photo_style_converter).convert(file_input=file, add_color=True if action == "color" else False)
+
+        await callback.message.answer_document(FSInputFile(file_output.file_path), caption=ascii_ready, parse_mode="HTML")
         await callback.bot.delete_message(chat_id=edit_msg.chat.id, message_id=edit_msg.message_id)
-    else:
-        async def dynamic_progress_callback(text: str, is_full: bool):
-            nonlocal message_id, edit_msg
 
-            if not is_full:
-                await callback.bot.edit_message_text(
-                    chat_id=callback.message.chat.id,
-                    message_id=message_id,
-                    text=text
-                )
-            else:
-                new_edit_msg = await callback.message.answer(text)
-                message_id = new_edit_msg.message_id
-
-        await TranscribeAudioUseCase(transcriber=transcriber).transcribe_dynamic(file, on_progress=dynamic_progress_callback)
-
-@router.callback_query(lambda f: f.data in ("color", "no_color"))
-async def convert_to_ascii_callback(callback: CallbackQuery, state: FSMContext):
-    await callback.message.delete()
-    await callback.answer()
-
-    data = await state.get_data()
-    file: File = data.get("file")
-    action = callback.data.lower()
-
-    edit_msg = await callback.message.answer("🔢 Преобразую в ASCII...")
-    converter = AsciiConverter()
-
-    result_path = await AsciiConverterUseCase(converter=converter).convert(file=file, add_color=True if action == "color" else False)
-
-    await callback.message.answer_document(FSInputFile(result_path), caption="📝 Преобразование фото в ASCII готово!")
-    await callback.bot.delete_message(chat_id=edit_msg.chat.id, message_id=edit_msg.message_id)
+    return router

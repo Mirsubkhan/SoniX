@@ -1,18 +1,16 @@
 from abc import ABC, abstractmethod
-from core.entities.file import File
-from pathlib import Path
 from typing import Callable, Awaitable
+from core.entities.file_dto import FileInputDTO, FileOutputDTO
+
 
 TranscribeProgressCallback = Callable[[int], Awaitable[None]]
 DynamicProgressCallback = Callable[[str, bool], Awaitable[None]]
 
 class AudioTranscriber(ABC):
     @abstractmethod
-    async def transcribe_dynamic(self, file: File, on_progress: DynamicProgressCallback):
-        """Динамическая транскрибация аудио внутри чата телеграма"""
+    async def transcribe_dynamic(self, file_input: FileInputDTO, on_progress: DynamicProgressCallback) -> None:
         pass
 
     @abstractmethod
-    async def transcribe(self, file: File, on_progress: TranscribeProgressCallback) -> Path:
-        """транскрибация с выводом progress bar и вывод результата в .txt"""
+    async def transcribe(self, file_input: FileInputDTO, on_progress: TranscribeProgressCallback) -> FileOutputDTO:
         pass

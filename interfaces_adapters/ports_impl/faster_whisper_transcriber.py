@@ -1,13 +1,11 @@
 import asyncio
-import logging
-import traceback
 from pathlib import Path
 import aiofiles
 from faster_whisper import WhisperModel
 from core.ports.audio_transcriber import AudioTranscriber, DynamicProgressCallback, TranscribeProgressCallback
 from core.entities.file import File
-from core.entities.transcription_result import TranscriptionSegment
-from datetime import timedelta
+from core.entities.file_dto import FileInputDTO, FileOutputDTO
+
 
 class FasterWhisperTranscriber(AudioTranscriber):
     def __init__(self, model_size="medium", compute_type="auto"):
@@ -17,9 +15,9 @@ class FasterWhisperTranscriber(AudioTranscriber):
             device="cuda"
         )
 
-    async def transcribe_dynamic(self, file: File, on_progress: DynamicProgressCallback):
+    async def transcribe_dynamic(self, file_input: FileInputDTO, on_progress: DynamicProgressCallback) -> None:
         segments_raw, _ = self.model.transcribe(
-            str(file.file_path),
+            str(file_input.file_path),
             patience=1,
             beam_size=5,
             vad_filter=True
@@ -48,16 +46,16 @@ class FasterWhisperTranscriber(AudioTranscriber):
                 last_time = now
 
 
-    async def transcribe(self, file: File, on_progress: TranscribeProgressCallback) -> Path:
+    async def transcribe(self, file_input: FileInputDTO, on_progress: TranscribeProgressCallback) -> FileOutputDTO:
         segments_raw, _ = self.model.transcribe(
-            str(file.file_path),
+            str(file_input.file_path),
             patience=1,
             beam_size=5,
             vad_filter=True
         )
 
         full_text = ""
-        total_secs = file.file_duration.total_seconds()
+        total_secs = file_input.file_duration.total_seconds()
         seconds_per_heart = total_secs / 10
         last_update = asyncio.get_event_loop().time()
 
@@ -76,8 +74,8 @@ class FasterWhisperTranscriber(AudioTranscriber):
                 except Exception as e:
                     continue
 
-        text_path = file.file_path.with_suffix(".txt")
-        async with aiofiles.open(text_path, "w") as f:
+        file_output = FileOutputDTO(file_path=file_input.file_path.with_suffix(".txt"))
+        async with aiofiles.open(file_output.file_path, "w") as f:
             await f.write(full_text)
 
-        return Path(text_path)
+        return file_output

@@ -1,98 +1,64 @@
-import logging
-import traceback
-import uuid
 from datetime import timedelta
-from pathlib import Path
 
-from aiogram import Router, Bot
+from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from infrastructure.telegram.inline_keyboard import video_process_keyboard, photo_process_keyboard, audio_process_keyboard
+from core.entities.file_dto import FileInputDTO
+from infrastructure.telegram.bot_answers import loading_file, file_download_error, file_downloaded, unsupported_file
 from infrastructure.telegram.fsm_states import FileProcessing
-from core.entities.file import File, FileType
-
-router = Router()
-
-downloads_dir = Path("downloads")
-downloads_dir.mkdir(parents=True, exist_ok=True)
-
-FILE_TYPE_MAP = {
-    "photo": ("png", FileType.PHOTO),
-    "video": ("mp4", FileType.VIDEO),
-    "video_note": ("mp4", FileType.VIDEO),
-    "voice": ("wav", FileType.AUDIO),
-    "audio": ("wav", FileType.AUDIO),
-}
-KEYBOARD_MAP = {
-    FileType.PHOTO: photo_process_keyboard,
-    FileType.VIDEO: video_process_keyboard,
-    FileType.AUDIO: audio_process_keyboard
-}
-
-async def _download_file(bot: Bot, file_id, file_format: str) -> Path:
-    file = await bot.get_file(file_id=file_id)
-
-    dest = downloads_dir / f"{uuid.uuid4()}.{file_format}"
-    dest = dest.absolute()
-
-    await bot.download_file(file.file_path, destination=dest)
-
-    return dest
-
-async def _detect_file_type(message: Message):
-    for attr, (fformat, ftype) in FILE_TYPE_MAP.items():
-        if getattr(message, attr, None):
-            return fformat, ftype
-
-async def _return_keyboard(file_type: FileType):
-    return KEYBOARD_MAP[file_type]
-
-@router.message(lambda m: m.video or m.audio or m.video_note or m.voice or m.photo)
-async def media_handler(message: Message, state: FSMContext):
-    message_file = message.audio or message.video or message.voice or message.video_note
-
-    rm_message = await message.answer(text="<i>Гружу файл...👍</i>", parse_mode="HTML")
-
-    try:
-        file_id = message.photo[-1].file_id if message.photo else message_file.file_id
-        file_format, file_type = await _detect_file_type(message)
-        file_path = await _download_file(message.bot, file_id=file_id, file_format=file_format)
-    except Exception as e:
-        traceback.print_exc()
-        logging.exception("Error")
-        await message.answer("Пупупу...Здесь ошибка при скачивании файла 😓\nПопробуй заново 🥺")
-        return
+from core.entities.file import File
+from infrastructure.telegram.services.file_worker import TelegramFileWorker
 
 
-    file = File(
-        user_id=message.from_user.id,
-        file_id=file_id,
-        file_path=file_path,
-        file_type=file_type,
-        file_format=file_format,
-        file_duration=None if message.photo else timedelta(seconds=message_file.duration)
-    )
+media_filter = F.video | F.audio | F.video_note | F.voice | F.photo
+not_supported_filter = ~(F.video | F.audio | F.video_note | F.voice | F.photo | F.text)
 
-    print(f"{file.file_id}\n{file.file_path}\n{file.file_type}\n{file.file_format}\n{file.user_id}\n{file.file_duration}")
+def setup_handlers(router: Router, file_worker: TelegramFileWorker):
+    @router.message(media_filter)
+    async def media_handler(message: Message, state: FSMContext):
+        message_file = message.audio or message.video or message.voice or message.video_note
+        edit_msg = await message.reply(text=loading_file, parse_mode="HTML")
 
-    await state.set_state(FileProcessing.file_received)
-    await state.update_data(file=file)
+        try:
+            file_id = message.photo[-1].file_id if message.photo else message_file.file_id
+            file_format, file_type = await file_worker.detect_file_type(message)
+            file_path = await file_worker.download_file(message.bot, file_id=file_id, file_format=file_format)
 
-    await message.bot.delete_message(message_id=rm_message.message_id, chat_id=message.from_user.id)
-    await message.answer(
-        text="<b>Готово! Что хочешь сделать с файлом? 😏👇</b>",
-        reply_markup=await _return_keyboard(file.file_type),
-        parse_mode="HTML"
-    )
+            file = File(
+                user_id=message.from_user.id,
+                file_id=file_id,
+                file_path=file_path,
+                file_type=file_type,
+                file_format=file_format,
+                file_duration=None if message.photo else timedelta(seconds=message_file.duration)
+            )
 
-@router.message(lambda m: not m.video and not m.video_note and not m.voice and not m.photo and not m.audio and not m.text)
-async def warn_message(message: Message):
-    await message.answer(
-        text=(
-            "<b>Упс! 😬</b>\n\n"
-            "Проверь, что файл и его формат поддерживаются мною. Я принимаю только:\n"
-            "<b>Аудио, голосовые сообщения, видео, видео-кружки и фото.</b>"
-        ),
-        parse_mode="HTML"
-    )
+            print(f"{file.file_id}\n"
+                  f"{file.file_path}\n"
+                  f"{file.file_type}\n"
+                  f"{file.file_format}\n"
+                  f"{file.user_id}\n"
+                  f"{file.file_duration}")
+
+            file_input = FileInputDTO(file_path = file.file_path, file_type=file.file_type, file_duration=file.file_duration)
+
+            await state.set_state(FileProcessing.file_received)
+            await state.update_data(file=file_input)
+
+            await message.reply(
+                text=file_downloaded,
+                reply_markup=await file_worker.return_keyboard(file.file_type),
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            await message.reply(text=file_download_error)
+        finally:
+            await message.bot.delete_message(message_id=edit_msg.message_id, chat_id=message.from_user.id)
+            return
+
+    @router.message(not_supported_filter)
+    async def warn_message(message: Message):
+        await message.reply(text=unsupported_file, parse_mode="HTML")
+
+    return router

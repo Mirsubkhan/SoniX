@@ -1,15 +1,15 @@
 import asyncio
 import subprocess
 from core.ports.audio_separator import AudioSeparator, ProgressCallback
-from core.entities.file import File
 from pathlib import Path
+from core.entities.file_dto import FileInputDTO, FileOutputDTO
 
 class DemucsSeparator(AudioSeparator):
     def __init__(self, output_dir: Path = Path("./separated")):
         self.output_dir = output_dir.resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    async def separate(self, file: File, on_progress: ProgressCallback) -> Path:
+    async def separate(self, file_input: FileInputDTO, on_progress: ProgressCallback) -> FileOutputDTO:
         cmd = [
             "python", "-m", "demucs.separate",
             "--mp3",
@@ -17,7 +17,7 @@ class DemucsSeparator(AudioSeparator):
             "-n", "mdx_extra",
             "-d", "cuda",
             "-o", str(self.output_dir),
-            str(file.file_path)
+            str(file_input.file_path)
         ]
 
         process = await asyncio.create_subprocess_exec(
@@ -50,10 +50,10 @@ class DemucsSeparator(AudioSeparator):
 
         await process.wait()
 
-        input_stem = Path(file.file_path).stem
-        result_dir = self.output_dir / "mdx_extra" / input_stem
+        input_stem = Path(file_input.file_path).stem
+        result_dir = FileOutputDTO(file_path=self.output_dir / "mdx_extra" / input_stem)
 
-        if not result_dir.exists():
-            raise ValueError(f"Demucs не создал папку с результатами: {result_dir}")
+        if not result_dir.file_path.exists():
+            raise ValueError(f"Demucs не создал папку с результатами: {result_dir.file_path}")
 
         return result_dir
