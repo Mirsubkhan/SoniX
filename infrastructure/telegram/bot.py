@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from aiogram.fsm.storage.memory import MemoryStorage
 from redis.asyncio import Redis
 
-from core.ports.audio_transcriber import AudioTranscriber
 from infrastructure.telegram.handlers import messages, callbacks, commands
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiohttp import ClientTimeout
@@ -13,9 +12,12 @@ from aiohttp import ClientTimeout
 from infrastructure.telegram.services.file_worker import TelegramFileWorker
 from infrastructure.telegram.services.progress_bar import TelegramProgressBarRenderer
 from interfaces_adapters.ports_impl.ascii_converter import AsciiConverter
+from interfaces_adapters.ports_impl.bg_remover import BgRemover
 from interfaces_adapters.ports_impl.demucs_separator import DemucsSeparator
+from interfaces_adapters.ports_impl.easyocr_converter import EasyOCRImageToText
 from interfaces_adapters.ports_impl.faster_whisper_transcriber import FasterWhisperTranscriber
 from interfaces_adapters.ports_impl.ffmpeg_audio_extractor import FFMpegAudioExtractor
+from interfaces_adapters.ports_impl.realesrgan_upscaler import RealERSGANUpscaler
 from interfaces_adapters.ports_impl.redis_file_storage import RedisFileStorage
 
 timeout = ClientTimeout(total=60)
@@ -34,8 +36,6 @@ async def main():
     bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'), session=session)
     dp = Dispatcher(storage=MemoryStorage())
 
-
-
     dp.include_routers(
         commands.setup_handlers(router=Router()),
         messages.setup_handlers(router=Router(),
@@ -47,6 +47,9 @@ async def main():
                                  photo_style_converter=AsciiConverter(),
                                  separator=DemucsSeparator(),
                                  progress_bar=TelegramProgressBarRenderer(),
+                                 bg_remover=BgRemover(),
+                                 ocr=EasyOCRImageToText(),
+                                 upscaler=RealERSGANUpscaler(),
                                  client=RedisFileStorage(redis=client))
     )
     dp.shutdown.register(on_shutdown)

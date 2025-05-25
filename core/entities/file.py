@@ -1,8 +1,8 @@
-import datetime
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from enum import Enum
+from typing import Union
 
 class FileType(Enum):
     AUDIO = "audio"
@@ -15,5 +15,5 @@ class File:
     file_id: str
     file_path: Path
     file_type: FileType
-    file_duration: timedelta | None
+    file_duration: Union[timedelta, None]
     file_format: str

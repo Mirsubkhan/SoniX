@@ -1,3 +1,5 @@
+import torch
+
 from infrastructure.telegram.bot import main
 import asyncio
 

@@ -5,8 +5,10 @@ video_process_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 photo_process_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="Трансформировать в ASCII", callback_data=f"transform_to_ascii")],
-    [InlineKeyboardButton(text="Удалить фон", callback_data=f"remove_bg")]
+    [InlineKeyboardButton(text="Извлечь текст", callback_data=f"extract_text")],
+    [InlineKeyboardButton(text="Улучшить качество", callback_data=f"upscale_image")],
+    [InlineKeyboardButton(text="Удалить фон", callback_data=f"remove_bg")],
+    [InlineKeyboardButton(text="Трансформировать в ASCII", callback_data=f"transform_to_ascii")]
 ])
 
 audio_process_keyboard = InlineKeyboardMarkup(inline_keyboard=[

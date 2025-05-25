@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from core.entities.file import File
 from core.entities.file_dto import FileInputDTO
+from typing import Union
 
 
 class FileStorage(ABC):
@@ -10,7 +11,7 @@ class FileStorage(ABC):
         pass
 
     @abstractmethod
-    async def get_by_file_user_id(self, user_id: int) -> FileInputDTO | None:
+    async def get_file_by_user_id(self, user_id: int) -> Union[FileInputDTO, None]:
         pass
 
     @abstractmethod

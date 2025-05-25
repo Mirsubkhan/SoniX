@@ -1,5 +1,4 @@
 from core.ports.photo_style_converter import PhotoStyleConverter
-from core.entities.file import File
 from PIL import Image, ImageFont, ImageDraw
 import numpy as np
 from core.entities.file_dto import FileInputDTO, FileOutputDTO

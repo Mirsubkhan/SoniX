@@ -5,15 +5,22 @@ from aiogram.fsm.context import FSMContext
 from redis.asyncio import Redis
 
 from application.use_cases.ffmpeg_audio_extractor_use_case import FFMpegAudioExtractorUseCase
+from application.use_cases.image_to_text_use_case import ImageToTextUseCase
 from application.use_cases.redis_use_case import RedisUseCase
+from application.use_cases.remove_bg_use_case import BgRemoverUseCase
+from application.use_cases.upscaler_use_case import UpscalerUseCase
 from core.entities.file_dto import FileInputDTO
 from core.ports.audio_extractor import AudioExtractor
 from core.ports.audio_separator import AudioSeparator
 from core.ports.audio_transcriber import AudioTranscriber
+from core.ports.background_remover import BackgroundRemover
 from core.ports.file_storage import FileStorage
+from core.ports.image_to_text_converter import ImageToTextConverter
+from core.ports.image_upscaler import ImageUpscaler
 from core.ports.photo_style_converter import PhotoStyleConverter
 from infrastructure.telegram.bot_answers import data_lost, transcribe_options, listening_file, demucs_error, \
-    ascii_options, ascii_wait_message, ascii_ready, transcribe_ready
+    ascii_options, ascii_wait_message, ascii_ready, transcribe_ready, removing_bg, ocr_error, bg_error, extracting_text, \
+    upscaling, realesrgan_error
 from infrastructure.telegram.services.progress_bar import TelegramProgressBarRenderer
 from infrastructure.telegram.inline_keyboard import return_as_file_keyboard, transform_options_keyboard
 from application.use_cases.demucs_separator_use_case import DemucsSeparatorUseCase
@@ -27,15 +34,19 @@ def setup_handlers(
         photo_style_converter: PhotoStyleConverter,
         separator: AudioSeparator,
         progress_bar: TelegramProgressBarRenderer,
+        bg_remover: BackgroundRemover,
+        ocr: ImageToTextConverter,
+        upscaler: ImageUpscaler,
         client: FileStorage
 ):
-    @router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "remove_noise", "separate"])
+    @router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "remove_noise", "separate", "extract_text", "upscale_image"])
     async def handle_file(callback: CallbackQuery):
         await callback.message.delete()
         await callback.answer()
 
         redis = RedisUseCase(redis=client)
-        file = await redis.get_file_by_uid(user_id=callback.message.from_user.id)
+        file = await redis.get_file_by_uid(user_id=callback.from_user.id)
+        print(file)
 
         if not file:
             await callback.message.answer(text=data_lost, parse_mode="HTML")
@@ -51,7 +62,6 @@ def setup_handlers(
             )
 
         elif action == "separate":
-            await callback.message.edit_reply_markup()
             edit_msg = await callback.message.answer(listening_file, parse_mode="HTML")
             progress_bar.bot = callback.bot
             progress_bar.message_id = edit_msg.message_id
@@ -75,6 +85,45 @@ def setup_handlers(
                 parse_mode="HTML"
             )
 
+        elif action == "remove_bg":
+            edit_msg = await callback.message.answer(removing_bg, parse_mode="HTML")
+            file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
+                                      file_type=file.file_type)
+            file_output = await BgRemoverUseCase(remover=bg_remover).remove_bg(file=file_input)
+
+            if file_output:
+                await callback.message.answer_document(FSInputFile(file_output.file_path))
+                await callback.bot.delete_message(message_id=edit_msg.message_id, chat_id=callback.message.chat.id)
+                await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
+            else:
+                await callback.message.answer(bg_error)
+
+        elif action == "extract_text":
+            edit_msg = await callback.message.answer(extracting_text, parse_mode="HTML")
+            file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
+                                      file_type=file.file_type)
+            file_output = await ImageToTextUseCase(converter=ocr).image_to_text(file_input=file_input)
+
+            if file_output:
+                await callback.message.answer(text=f"<b>Результат:</b>\n<blockquote>{file_output.file_txt}</blockquote>", parse_mode="HTML")
+                await callback.bot.delete_message(message_id=edit_msg.message_id, chat_id=callback.message.chat.id)
+                await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
+            else:
+                await callback.message.answer(ocr_error)
+
+        elif action == "upscale_image":
+            edit_msg = await callback.message.answer(upscaling, parse_mode="HTML")
+            file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
+                                      file_type=file.file_type)
+            file_output = await UpscalerUseCase(upscaler=upscaler).upscale(file=file_input)
+
+            if file_output:
+                await callback.message.answer_document(FSInputFile(file_output.file_path))
+                await callback.bot.delete_message(message_id=edit_msg.message_id, chat_id=callback.message.chat.id)
+                await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
+            else:
+                await callback.message.answer(realesrgan_error)
+
 
     @router.callback_query(lambda f: f.data in ['file', 'no_file'])
     async def transcribe_callback(callback: CallbackQuery):
@@ -82,7 +131,7 @@ def setup_handlers(
         await callback.answer()
 
         redis = RedisUseCase(redis=client)
-        file = await redis.get_file_by_uid(user_id=callback.message.from_user.id)
+        file = await redis.get_file_by_uid(user_id=callback.from_user.id)
         action = callback.data.lower()
 
         edit_msg = await callback.message.answer(text=listening_file, parse_mode="HTML")
@@ -105,7 +154,7 @@ def setup_handlers(
         await callback.answer()
 
         redis = RedisUseCase(redis=client)
-        file = await redis.get_file_by_uid(user_id=callback.message.from_user.id)
+        file = await redis.get_file_by_uid(user_id=callback.from_user.id)
         action = callback.data.lower()
 
         edit_msg = await callback.message.answer(ascii_wait_message, parse_mode="HTML")

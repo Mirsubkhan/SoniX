@@ -1,5 +1,7 @@
 import asyncio
 import subprocess
+import sys
+
 from core.ports.audio_separator import AudioSeparator, ProgressCallback
 from pathlib import Path
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
@@ -11,7 +13,7 @@ class DemucsSeparator(AudioSeparator):
 
     async def separate(self, file_input: FileInputDTO, on_progress: ProgressCallback) -> FileOutputDTO:
         cmd = [
-            "python", "-m", "demucs.separate",
+            sys.executable, "-m", "demucs.separate",
             "--mp3",
             "--two-stems", "vocals",
             "-n", "mdx_extra",
@@ -35,6 +37,7 @@ class DemucsSeparator(AudioSeparator):
                 break
 
             decoded = line.decode().strip()
+            print(f"[demucs] {decoded}")
 
             if "100%|" in decoded:
                 progress_bars_completed += 1
@@ -49,6 +52,8 @@ class DemucsSeparator(AudioSeparator):
                         pass
 
         await process.wait()
+        if process.returncode != 0:
+            raise RuntimeError(f"Demucs завершился с ошибкой: {process.returncode}")
 
         input_stem = Path(file_input.file_path).stem
         result_dir = FileOutputDTO(file_path=self.output_dir / "mdx_extra" / input_stem)
