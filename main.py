@@ -2,7 +2,7 @@ import asyncio
 from infrastructure.telegram.bot import create_dispatcher
 
 async def main():
-    dp, bot = create_dispatcher()
+    dp, bot = await create_dispatcher()
 
     try:
         await bot.delete_webhook(drop_pending_updates=True)
