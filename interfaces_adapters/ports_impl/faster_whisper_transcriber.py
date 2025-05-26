@@ -1,9 +1,7 @@
 import asyncio
-from pathlib import Path
 import aiofiles
 from faster_whisper import WhisperModel
 from core.ports.audio_transcriber import AudioTranscriber, DynamicProgressCallback, TranscribeProgressCallback
-from core.entities.file import File
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 
 

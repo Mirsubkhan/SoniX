@@ -1,6 +1,4 @@
-from core.entities.file import File
 from core.ports.audio_separator import AudioSeparator, ProgressCallback
-from pathlib import Path
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 
 class DemucsSeparatorUseCase:

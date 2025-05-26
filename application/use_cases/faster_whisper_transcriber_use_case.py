@@ -1,6 +1,4 @@
-from core.entities.file import File
 from core.ports.audio_transcriber import AudioTranscriber, DynamicProgressCallback, TranscribeProgressCallback
-from pathlib import Path
 from application.use_cases.ffmpeg_audio_extractor_use_case import FFMpegAudioExtractorUseCase
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 

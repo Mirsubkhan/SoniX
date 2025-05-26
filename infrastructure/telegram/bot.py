@@ -30,17 +30,19 @@ async def on_shutdown(dp: Dispatcher):
     await session.close()
     await client.close()
 
-async def main():
+async def create_dispatcher():
     load_dotenv()
+    BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
-    bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'), session=session)
+    bot = Bot(token=BOT_TOKEN, session=session)
     dp = Dispatcher(storage=MemoryStorage())
+    storage = RedisFileStorage(redis=client)
 
     dp.include_routers(
         commands.setup_handlers(router=Router()),
         messages.setup_handlers(router=Router(),
                                 file_worker=TelegramFileWorker(),
-                                client=RedisFileStorage(redis=client)),
+                                client=storage),
         callbacks.setup_handlers(router=Router(),
                                  transcriber=FasterWhisperTranscriber(),
                                  extractor=FFMpegAudioExtractor(),
@@ -50,12 +52,8 @@ async def main():
                                  bg_remover=BgRemover(),
                                  ocr=EasyOCRImageToText(),
                                  upscaler=RealERSGANUpscaler(),
-                                 client=RedisFileStorage(redis=client))
+                                 client=storage)
     )
     dp.shutdown.register(on_shutdown)
 
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
+    return dp, bot

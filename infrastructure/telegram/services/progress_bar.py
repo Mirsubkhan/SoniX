@@ -12,7 +12,7 @@ class TelegramProgressBarRenderer:
             await self.bot.edit_message_text(
                 chat_id=self.chat_id,
                 message_id=self.message_id,
-                text=f"🎧 Разделение музыки...\n{hearts} | {percent}%"
+                text=f"🎧 Разделение файла...\n{hearts} | {percent}%"
             )
         except Exception as e:
             pass

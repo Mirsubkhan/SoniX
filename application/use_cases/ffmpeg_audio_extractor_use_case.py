@@ -1,6 +1,4 @@
-from core.entities.file import File
 from core.ports.audio_extractor import AudioExtractor
-from pathlib import Path
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 
 class FFMpegAudioExtractorUseCase:

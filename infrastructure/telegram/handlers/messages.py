@@ -2,12 +2,9 @@ import traceback
 from datetime import timedelta
 
 from aiogram import Router, F
-from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
-from redis.asyncio import Redis
 
 from application.use_cases.redis_use_case import RedisUseCase
-from core.entities.file_dto import FileInputDTO
 from core.ports.file_storage import FileStorage
 from infrastructure.telegram.bot_answers import loading_file, file_download_error, file_downloaded, unsupported_file
 from core.entities.file import File

@@ -1,6 +1,5 @@
 import asyncio
 from pathlib import Path
-
 from core.entities.file import FileType
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 from core.ports.image_to_text_converter import ImageToTextConverter

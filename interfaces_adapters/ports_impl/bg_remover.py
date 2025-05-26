@@ -1,4 +1,3 @@
-import asyncio
 from pathlib import Path
 from PIL import Image
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
@@ -6,7 +5,6 @@ from core.ports.background_remover import BackgroundRemover
 import torch
 from transformers import AutoModelForImageSegmentation
 from torchvision import transforms
-from torchvision.transforms._functional_tensor import rgb_to_grayscale
 
 class BgRemover(BackgroundRemover):
     def __init__(self, output_dir: Path = Path("./bg_removed_imgs")):

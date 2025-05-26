@@ -2,8 +2,6 @@ import asyncio
 from pathlib import Path
 
 import aiofiles
-import numpy as np
-from PIL import Image
 
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 from core.ports.image_to_text_converter import ImageToTextConverter

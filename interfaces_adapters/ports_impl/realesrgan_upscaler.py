@@ -2,12 +2,9 @@ import asyncio
 from pathlib import Path
 
 import cv2
-import numpy as np
 import torch
-from PIL import Image
 from basicsr.archs.rrdbnet_arch import RRDBNet
 
-from core.entities.file import FileType
 from core.ports.image_upscaler import ImageUpscaler
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 from realesrgan import RealESRGANer

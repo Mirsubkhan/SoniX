@@ -38,8 +38,8 @@ def setup_handlers(
         ocr: ImageToTextConverter,
         upscaler: ImageUpscaler,
         client: FileStorage
-):
-    @router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "remove_noise", "separate", "extract_text", "upscale_image"])
+) -> Router:
+    @router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "remove_noise", "separate_bg", "separate_voice", "extract_text", "upscale_image"])
     async def handle_file(callback: CallbackQuery):
         await callback.message.delete()
         await callback.answer()
@@ -61,7 +61,7 @@ def setup_handlers(
                 parse_mode="HTML"
             )
 
-        elif action == "separate":
+        elif action in ("separate_bg", "separate_voice"):
             edit_msg = await callback.message.answer(listening_file, parse_mode="HTML")
             progress_bar.bot = callback.bot
             progress_bar.message_id = edit_msg.message_id
@@ -70,8 +70,10 @@ def setup_handlers(
             file_output = await DemucsSeparatorUseCase(separator=separator).separate(file_input, on_progress=progress_bar.demucs_progress_callback)
 
             if file_output:
-                await callback.message.answer_document(FSInputFile(file_output.file_path.joinpath("vocals.mp3")))
-                await callback.message.answer_document(FSInputFile(file_output.file_path.joinpath("no_vocals.mp3")))
+                if action == "separate_voice":
+                    await callback.message.answer_document(FSInputFile(file_output.file_path.joinpath("vocals.mp3")))
+                else:
+                    await callback.message.answer_document(FSInputFile(file_output.file_path.joinpath("no_vocals.mp3")))
                 await callback.bot.delete_message(message_id=edit_msg.message_id, chat_id=callback.message.chat.id)
 
                 await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
