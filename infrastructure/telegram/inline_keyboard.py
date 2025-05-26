@@ -14,8 +14,7 @@ photo_process_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 audio_process_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Извлечь текст", callback_data=f"transcribe")],
     [InlineKeyboardButton(text="Удалить фон. звук", callback_data=f"separate_bg")],
-    [InlineKeyboardButton(text="Удалить голос", callback_data=f"separate_voice")],
-    [InlineKeyboardButton(text="Удалить шум", callback_data=f"remove_noise")],
+    [InlineKeyboardButton(text="Удалить голос", callback_data=f"separate_voice")]
 ])
 
 return_as_file_keyboard = InlineKeyboardMarkup(inline_keyboard=[

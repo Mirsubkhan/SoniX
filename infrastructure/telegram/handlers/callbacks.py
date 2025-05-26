@@ -39,7 +39,7 @@ def setup_handlers(
         upscaler: ImageUpscaler,
         client: FileStorage
 ) -> Router:
-    @router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "remove_noise", "separate_bg", "separate_voice", "extract_text", "upscale_image"])
+    @router.callback_query(lambda f: f.data in ["transcribe", "transform_to_ascii", "remove_bg", "separate_bg", "separate_voice", "extract_text", "upscale_image"])
     async def handle_file(callback: CallbackQuery):
         await callback.message.delete()
         await callback.answer()
