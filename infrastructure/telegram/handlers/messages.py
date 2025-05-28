@@ -4,7 +4,7 @@ from datetime import timedelta
 from aiogram import Router, F
 from aiogram.types import Message
 
-from application.use_cases.redis_use_case import RedisUseCase
+from application.use_cases.file_storage_use_case import RedisUseCase
 from core.ports.file_storage import FileStorage
 from infrastructure.telegram.bot_answers import loading_file, file_download_error, file_downloaded, unsupported_file
 from core.entities.file import File

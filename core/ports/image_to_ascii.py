@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from PIL import Image
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 
-class PhotoStyleConverter(ABC):
+class ImageToASCII(ABC):
     @abstractmethod
     async def map_pixels_to_ascii(self, image: Image, add_color=False) -> Image:
         pass

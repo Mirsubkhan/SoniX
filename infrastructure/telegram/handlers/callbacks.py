@@ -4,38 +4,38 @@ from aiogram.types import CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 from redis.asyncio import Redis
 
-from application.use_cases.ffmpeg_audio_extractor_use_case import FFMpegAudioExtractorUseCase
-from application.use_cases.image_to_text_use_case import ImageToTextUseCase
-from application.use_cases.redis_use_case import RedisUseCase
+from application.use_cases.audio_extractor_use_case import AudioExtractorUseCase
+from application.use_cases.image_ocr_use_case import ImageOCRUseCase
+from application.use_cases.file_storage_use_case import FileStorageUseCase
 from application.use_cases.remove_bg_use_case import BgRemoverUseCase
-from application.use_cases.upscaler_use_case import UpscalerUseCase
+from application.use_cases.image_upscaler_use_case import UpscalerUseCase
 from core.entities.file_dto import FileInputDTO
 from core.ports.audio_extractor import AudioExtractor
 from core.ports.audio_separator import AudioSeparator
-from core.ports.audio_transcriber import AudioTranscriber
-from core.ports.background_remover import BackgroundRemover
+from core.ports.asr_transcriber import ASRTranscriber
+from core.ports.bg_remover import BgRemover
 from core.ports.file_storage import FileStorage
-from core.ports.image_to_text_converter import ImageToTextConverter
+from core.ports.image_ocr import ImageOCR
 from core.ports.image_upscaler import ImageUpscaler
-from core.ports.photo_style_converter import PhotoStyleConverter
+from core.ports.image_to_ascii import ImageToASCII
 from infrastructure.telegram.bot_answers import data_lost, transcribe_options, listening_file, demucs_error, \
     ascii_options, ascii_wait_message, ascii_ready, transcribe_ready, removing_bg, ocr_error, bg_error, extracting_text, \
     upscaling, realesrgan_error
 from infrastructure.telegram.services.progress_bar import TelegramProgressBarRenderer
 from infrastructure.telegram.inline_keyboard import return_as_file_keyboard, transform_options_keyboard
-from application.use_cases.demucs_separator_use_case import DemucsSeparatorUseCase
-from application.use_cases.ascii_converter_use_case import AsciiConverterUseCase
-from application.use_cases.faster_whisper_transcriber_use_case import TranscribeAudioUseCase
+from application.use_cases.audio_separator_use_case import AudioSeparatorUseCase
+from application.use_cases.image_to_ascii_use_case import AsciiConverterUseCase
+from application.use_cases.asr_transcriber_use_case import ASRTranscriberUseCase
 
 def setup_handlers(
         router: Router,
-        transcriber: AudioTranscriber,
+        transcriber: ASRTranscriber,
         extractor: AudioExtractor,
-        photo_style_converter: PhotoStyleConverter,
+        photo_style_converter: ImageToASCII,
         separator: AudioSeparator,
         progress_bar: TelegramProgressBarRenderer,
-        bg_remover: BackgroundRemover,
-        ocr: ImageToTextConverter,
+        bg_remover: BgRemover,
+        ocr: ImageOCR,
         upscaler: ImageUpscaler,
         client: FileStorage
 ) -> Router:
@@ -44,7 +44,7 @@ def setup_handlers(
         await callback.message.delete()
         await callback.answer()
 
-        redis = RedisUseCase(redis=client)
+        redis = FileStorageUseCase(redis=client)
         file = await redis.get_file_by_uid(user_id=callback.from_user.id)
         print(file)
 
@@ -67,7 +67,7 @@ def setup_handlers(
             progress_bar.message_id = edit_msg.message_id
             progress_bar.chat_id = callback.message.chat.id
             file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration, file_type=file.file_type)
-            file_output = await DemucsSeparatorUseCase(separator=separator).separate(file_input, on_progress=progress_bar.demucs_progress_callback)
+            file_output = await AudioSeparatorUseCase(separator=separator).separate(file_input, on_progress=progress_bar.demucs_progress_callback)
 
             if file_output:
                 if action == "separate_voice":
@@ -104,7 +104,7 @@ def setup_handlers(
             edit_msg = await callback.message.answer(extracting_text, parse_mode="HTML")
             file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
                                       file_type=file.file_type)
-            file_output = await ImageToTextUseCase(converter=ocr).image_to_text(file_input=file_input)
+            file_output = await ImageOCRUseCase(converter=ocr).image_to_text(file_input=file_input)
 
             if file_output:
                 await callback.message.answer(text=f"<b>Результат:</b>\n<blockquote>{file_output.file_txt}</blockquote>", parse_mode="HTML")
@@ -132,7 +132,7 @@ def setup_handlers(
         await callback.message.delete()
         await callback.answer()
 
-        redis = RedisUseCase(redis=client)
+        redis = FileStorageUseCase(redis=client)
         file = await redis.get_file_by_uid(user_id=callback.from_user.id)
         action = callback.data.lower()
 
@@ -142,11 +142,11 @@ def setup_handlers(
         progress_bar.chat_id = callback.message.chat.id
 
         if action == "file":
-            file_output = await TranscribeAudioUseCase(transcriber=transcriber, extractor=FFMpegAudioExtractorUseCase(extractor=extractor)).transcribe(file, on_progress=progress_bar.static_whisper_progress_callback)
+            file_output = await ASRTranscriberUseCase(asr=transcriber, extractor=AudioExtractorUseCase(extractor=extractor)).transcribe(file, on_progress=progress_bar.static_whisper_progress_callback)
             await callback.message.answer_document(FSInputFile(file_output.file_path), caption=transcribe_ready, parse_mode="HTML")
             await callback.bot.delete_message(chat_id=edit_msg.chat.id, message_id=edit_msg.message_id)
         else:
-            await TranscribeAudioUseCase(transcriber=transcriber, extractor=FFMpegAudioExtractorUseCase(extractor=extractor)).transcribe_dynamic(file, on_progress=progress_bar.dynamic_whisper_progress_callback)
+            await ASRTranscriberUseCase(asr=transcriber, extractor=AudioExtractorUseCase(extractor=extractor)).transcribe_dynamic(file, on_progress=progress_bar.dynamic_whisper_progress_callback)
 
         await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
 
@@ -155,7 +155,7 @@ def setup_handlers(
         await callback.message.delete()
         await callback.answer()
 
-        redis = RedisUseCase(redis=client)
+        redis = FileStorageUseCase(redis=client)
         file = await redis.get_file_by_uid(user_id=callback.from_user.id)
         action = callback.data.lower()
 

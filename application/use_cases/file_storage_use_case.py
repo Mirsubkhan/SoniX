@@ -4,7 +4,7 @@ from core.entities.file_dto import FileInputDTO
 from core.ports.file_storage import FileStorage
 
 
-class RedisUseCase:
+class FileStorageUseCase:
     def __init__(self, redis: FileStorage):
         self.redis = redis
 

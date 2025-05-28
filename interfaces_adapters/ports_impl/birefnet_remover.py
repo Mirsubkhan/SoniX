@@ -6,14 +6,14 @@ from PIL import Image
 from exceptiongroup import catch
 
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
-from core.ports.background_remover import BackgroundRemover
+from core.ports.bg_remover import BgRemover
 import torch
 from transformers import AutoModelForImageSegmentation
 from torchvision import transforms
 import tensorflow as tf
 
-class BgRemover(BackgroundRemover):
-    def __init__(self, output_dir: Path = Path("./bg_removed_imgs")):
+class BiRefNETRemover(BgRemover):
+    def __init__(self, output_dir: Path = Path("./bg_removed")):
         self.output_dir = output_dir.resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.executor = ThreadPoolExecutor(max_workers=4)
@@ -61,7 +61,6 @@ class BgRemover(BackgroundRemover):
                 preds = self.model(input_tensor)[-1].sigmoid().cpu()
 
             mask = transforms.ToPILImage()(preds[0].squeeze()).resize(im_size)
-
             im.putalpha(mask)
 
             output_path = self.output_dir / f"{stem}_nobg.png"

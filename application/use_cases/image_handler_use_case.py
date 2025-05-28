@@ -1,12 +1,9 @@
 from pathlib import Path
-
 from PIL import Image
+from core.ports.image_handler import ImageHandler
 
-from core.ports.file_repository import FileRepository
-
-
-class FileUseCase:
-    def __init__(self, file_repo: FileRepository):
+class ImageHandlerUseCase:
+    def __init__(self, file_repo: ImageHandler):
         self.file = file_repo
 
     async def open_img(self, path: Path) -> Image:

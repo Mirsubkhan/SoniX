@@ -4,10 +4,10 @@ from pathlib import Path
 import aiofiles
 
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
-from core.ports.image_to_text_converter import ImageToTextConverter
+from core.ports.image_ocr import ImageOCR
 from easyocr import easyocr
 
-class EasyOCRImageToText(ImageToTextConverter):
+class EasyOCRImageToText(ImageOCR):
     def __init__(self, output_dir: Path = Path("./image_to_text")):
         self.output_dir = output_dir.resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)

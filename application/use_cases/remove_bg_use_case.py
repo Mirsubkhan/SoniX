@@ -1,9 +1,9 @@
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
-from core.ports.background_remover import BackgroundRemover
+from core.ports.bg_remover import BgRemover
 
 
 class BgRemoverUseCase:
-    def __init__(self, remover: BackgroundRemover):
+    def __init__(self, remover: BgRemover):
         self.remover = remover
 
     async def remove_bg(self, file: FileInputDTO) -> FileOutputDTO:

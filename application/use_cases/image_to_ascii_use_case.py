@@ -1,8 +1,8 @@
-from core.ports.photo_style_converter import PhotoStyleConverter
+from core.ports.image_to_ascii import ImageToASCII
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 
 class AsciiConverterUseCase:
-    def __init__(self, converter: PhotoStyleConverter):
+    def __init__(self, converter: ImageToASCII):
         self.converter = converter
 
     async def convert(self, file_input: FileInputDTO, add_color: bool=False) -> FileOutputDTO:

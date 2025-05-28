@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 
-class BackgroundRemover(ABC):
+class ImageOCR(ABC):
     @abstractmethod
-    async def remove_bg(self, file: FileInputDTO) -> FileOutputDTO:
+    async def image_to_text(self, file_input: FileInputDTO, as_file: bool, lang: str) -> FileOutputDTO:
         pass
