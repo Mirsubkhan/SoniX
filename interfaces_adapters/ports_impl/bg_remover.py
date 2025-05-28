@@ -10,6 +10,7 @@ from core.ports.background_remover import BackgroundRemover
 import torch
 from transformers import AutoModelForImageSegmentation
 from torchvision import transforms
+import tensorflow as tf
 
 class BgRemover(BackgroundRemover):
     def __init__(self, output_dir: Path = Path("./bg_removed_imgs")):
@@ -17,7 +18,9 @@ class BgRemover(BackgroundRemover):
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.executor = ThreadPoolExecutor(max_workers=4)
 
-        warnings.filterwarnings("ignore")
+        tf.get_logger().setLevel('ERROR')
+        tf.autograph.set_verbosity(0)
+        warnings.filterwarnings("ignore", module="tensorflow")
 
         torch.set_float32_matmul_precision("high")
         self.model = AutoModelForImageSegmentation.from_pretrained(
