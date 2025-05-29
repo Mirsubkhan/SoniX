@@ -4,7 +4,7 @@ from datetime import timedelta
 from aiogram import Router, F
 from aiogram.types import Message
 
-from application.use_cases.file_storage_use_case import RedisUseCase
+from application.use_cases.file_storage_use_case import FileStorageUseCase
 from core.ports.file_storage import FileStorage
 from infrastructure.telegram.bot_answers import loading_file, file_download_error, file_downloaded, unsupported_file
 from core.entities.file import File
@@ -41,7 +41,7 @@ def setup_handlers(router: Router, file_worker: TelegramFileWorker, client: File
                   f"{file.user_id}\n"
                   f"{file.file_duration}")
 
-            await RedisUseCase(redis=client).save(file=file)
+            await FileStorageUseCase(redis=client).save(file=file)
 
             await message.reply(
                 text=file_downloaded,

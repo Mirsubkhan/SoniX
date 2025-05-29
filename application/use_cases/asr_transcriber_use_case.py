@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from core.entities.file import FileType
 from core.ports.asr_transcriber import ASRTranscriber, DynamicSSTCallback, STTCallback
 from application.use_cases.audio_extractor_use_case import AudioExtractorUseCase
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
@@ -18,8 +19,10 @@ class ASRTranscriberUseCase:
         return await self.asr.transcribe(file_input=file_input, on_progress=on_progress)
 
     async def _extract_audio(self, file_input: FileInputDTO) -> Path:
-        if file_input.file_type.VIDEO:
+        print("old:", file_input.file_path)
+        if file_input.file_type == FileType.VIDEO:
             file_output = await self.extractor.extract(file_input=file_input)
             file_input.file_path = file_output.file_path
+            print("new", file_input.file_path)
 
         return file_input.file_path

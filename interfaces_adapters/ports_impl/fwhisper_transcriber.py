@@ -14,9 +14,10 @@ class FWhisperTranscriber(ASRTranscriber):
         )
 
     async def transcribe_dynamic(self, file_input: FileInputDTO, on_progress: DynamicSSTCallback) -> None:
-        segments = self._transcribe_segments(file_input)
+        segments, _ = self._transcribe_segments(file_input)
 
         current_text = ""
+        last_text = ""
         last_time = asyncio.get_event_loop().time()
 
         for seg in segments:
@@ -24,7 +25,7 @@ class FWhisperTranscriber(ASRTranscriber):
             if not text_part:
                 continue
 
-            current_text += f" {text_part}"
+            current_text += f"{text_part} "
             now = asyncio.get_event_loop().time()
 
             if now - last_time >= 2.0:
@@ -32,10 +33,15 @@ class FWhisperTranscriber(ASRTranscriber):
                 await on_progress(msg, len(current_text) > 4096)
                 current_text = "" if len(current_text) <= 4096 else text_part
                 last_time = now
+                last_text = ""
 
+            last_text = current_text
+
+        if last_text:
+            await on_progress(last_text, len(last_text) > 4096)
 
     async def transcribe(self, file_input: FileInputDTO, on_progress: STTCallback) -> FileOutputDTO:
-        segments = self._transcribe_segments(file_input)
+        segments, _ = self._transcribe_segments(file_input)
 
         full_text = ""
         total_secs = file_input.file_duration.total_seconds()
@@ -52,7 +58,7 @@ class FWhisperTranscriber(ASRTranscriber):
             current_filled = min(filled_hearts, 10)
 
             now = asyncio.get_event_loop().time()
-            if now - last_update >= 2:
+            if now - last_update >= 2.0:
                 try:
                     await on_progress(current_filled)
                 except Exception as e:
@@ -71,4 +77,4 @@ class FWhisperTranscriber(ASRTranscriber):
             patience=1,
             beam_size=5,
             vad_filter=True
-        )[0]
+        )

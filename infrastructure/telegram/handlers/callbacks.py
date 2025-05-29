@@ -70,7 +70,7 @@ def setup_handlers(
             file_output = await AudioSeparatorUseCase(separator=separator).separate(file_input, on_progress=progress_bar.demucs_progress_callback)
 
             if file_output:
-                if action == "separate_voice":
+                if action == "separate_bg":
                     await callback.message.answer_document(FSInputFile(file_output.file_path.joinpath("vocals.mp3")))
                 else:
                     await callback.message.answer_document(FSInputFile(file_output.file_path.joinpath("no_vocals.mp3")))
@@ -150,21 +150,21 @@ def setup_handlers(
 
         await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
 
-    @router.callback_query(lambda f: f.data in ("color", "no_color"))
+    @router.callback_query(lambda f: f.data in ("100", "200", "300", "400", "500"))
     async def convert_to_ascii_callback(callback: CallbackQuery):
         await callback.message.delete()
         await callback.answer()
 
         redis = FileStorageUseCase(redis=client)
         file = await redis.get_file_by_uid(user_id=callback.from_user.id)
-        action = callback.data.lower()
+        char_width = int(callback.data.lower())
 
         edit_msg = await callback.message.answer(ascii_wait_message, parse_mode="HTML")
         progress_bar.bot = callback.bot
         progress_bar.message_id = edit_msg.message_id
         progress_bar.chat_id = callback.message.chat.id
 
-        file_output = await AsciiConverterUseCase(converter=photo_style_converter).convert(file_input=file, add_color=True if action == "color" else False)
+        file_output = await AsciiConverterUseCase(converter=photo_style_converter).convert(file_input=file, char_width=char_width)
 
         await callback.message.answer_document(FSInputFile(file_output.file_path), caption=ascii_ready, parse_mode="HTML")
         await callback.bot.delete_message(chat_id=edit_msg.chat.id, message_id=edit_msg.message_id)

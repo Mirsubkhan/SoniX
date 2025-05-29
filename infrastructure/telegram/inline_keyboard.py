@@ -23,7 +23,9 @@ return_as_file_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 transform_options_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="В цветном формате", callback_data=f"color")],
-    [InlineKeyboardButton(text="В черно-белом формате", callback_data=f"no_color")]
+    [InlineKeyboardButton(text="100", callback_data=f"100")],
+    [InlineKeyboardButton(text="150", callback_data=f"150")],
+    [InlineKeyboardButton(text="200", callback_data=f"200")],
+    [InlineKeyboardButton(text="250", callback_data=f"250")],
+    [InlineKeyboardButton(text="300", callback_data=f"300")]
 ])
-

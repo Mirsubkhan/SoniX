@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 
-from PIL import Image
+import cv2
 import torch
 from basicsr.archs.rrdbnet_arch import RRDBNet
 
@@ -22,8 +22,7 @@ class RealERSGANUpscaler(ImageUpscaler):
         self.up_sampler = RealESRGANer(scale=4, model_path=model_path, model=self.model, tile=0, pre_pad=0, half=True, tile_pad=10)
 
     async def upscale_image(self, file_input: FileInputDTO) -> FileOutputDTO:
-        # заменить
-        img = Image.open(file_input.file_path).convert("RGB")
+        img = await asyncio.to_thread(lambda: cv2.imread(str(file_input.file_path), cv2.IMREAD_COLOR))
 
         output, _ = await asyncio.to_thread(
             self.up_sampler.enhance, img=img, outscale=4
@@ -31,8 +30,7 @@ class RealERSGANUpscaler(ImageUpscaler):
 
         output_dir = self.output_dir.joinpath(file_input.file_path.stem + ".png")
 
-        # заменить
-        Image.Image.save(str(output_dir))
+        await asyncio.to_thread(lambda: cv2.imwrite(str(output_dir), output))
 
         return FileOutputDTO(file_path=output_dir)
 

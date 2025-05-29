@@ -14,7 +14,7 @@ class AsciiConverter(ImageToASCII):
         self.font =ImageFont.load_default()
         self.char_width, self.char_height = self._get_char_dimensions()
 
-    async def map_pixels_to_ascii(self, image: Image, add_color=False) -> Image:
+    async def map_pixels_to_ascii(self, image: Image) -> Image:
         pixels = np.array(image)
         width, height = image.size
 
@@ -36,11 +36,11 @@ class AsciiConverter(ImageToASCII):
 
         return ascii_image
 
-    async def convert_image_to_ascii(self, file_input: FileInputDTO, add_color: bool = False) -> FileOutputDTO:
+    async def convert_image_to_ascii(self, file_input: FileInputDTO, char_width: int = 300) -> FileOutputDTO:
         image = Image.open(file_input.file_path).convert("RGB")
-        resized_image = await self._resize_image(image)
+        resized_image = await self._resize_image(image, target_char_width=char_width)
 
-        ascii_img = await self.map_pixels_to_ascii(resized_image, add_color)
+        ascii_img = await self.map_pixels_to_ascii(resized_image)
 
         output_path: Path = file_input.file_path.with_stem(
             file_input.file_path.stem + "_ascii"
@@ -50,7 +50,7 @@ class AsciiConverter(ImageToASCII):
 
         return FileOutputDTO(file_path=output_path)
 
-    async def _get_char_dimensions(self) -> tuple[int, int]:
+    def _get_char_dimensions(self) -> tuple[int, int]:
         bbox = self.font.getbbox("A")
         return int(bbox[2] - bbox[0]), int(bbox[3] - bbox[1])
 
@@ -59,7 +59,7 @@ class AsciiConverter(ImageToASCII):
         index = brightness * len(self.ascii_chars) // 256
         return self.ascii_chars[index]
 
-    async def _resize_image(self, image: Image.Image, target_char_width: int = 260) -> Image.Image:
+    async def _resize_image(self, image: Image.Image, target_char_width: int = 300) -> Image.Image:
         aspect_ratio = image.height / image.width
         new_width = target_char_width
         new_height = int(aspect_ratio * new_width * (self.char_width / self.char_height))
