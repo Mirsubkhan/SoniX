@@ -3,8 +3,6 @@ import warnings
 from concurrent.futures.thread import ThreadPoolExecutor
 from pathlib import Path
 from PIL import Image
-from exceptiongroup import catch
-
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 from core.ports.bg_remover import BgRemover
 import torch
@@ -13,14 +11,10 @@ from torchvision import transforms
 import tensorflow as tf
 
 class BiRefNETRemover(BgRemover):
-    def __init__(self, output_dir: Path = Path("./bg_removed")):
+    def __init__(self, output_dir: Path = Path("./results/bg_removed")):
         self.output_dir = output_dir.resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.executor = ThreadPoolExecutor(max_workers=4)
-
-        tf.get_logger().setLevel('ERROR')
-        tf.autograph.set_verbosity(0)
-        warnings.filterwarnings("ignore", module="tensorflow")
 
         torch.set_float32_matmul_precision("high")
         self.model = AutoModelForImageSegmentation.from_pretrained(

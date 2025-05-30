@@ -19,7 +19,6 @@ class ASRTranscriberUseCase:
         return await self.asr.transcribe(file_input=file_input, on_progress=on_progress)
 
     async def _extract_audio(self, file_input: FileInputDTO) -> Path:
-        print("old:", file_input.file_path)
         if file_input.file_type == FileType.VIDEO:
             file_output = await self.extractor.extract(file_input=file_input)
             file_input.file_path = file_output.file_path

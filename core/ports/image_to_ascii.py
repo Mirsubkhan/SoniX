@@ -1,6 +1,7 @@
+from core.entities.file_dto import FileOutputDTO
 from abc import ABC, abstractmethod
-from PIL import Image
-from core.entities.file_dto import FileInputDTO, FileOutputDTO
+from pathlib import Path
+from PIL.Image import Image
 
 class ImageToASCII(ABC):
     @abstractmethod
@@ -8,5 +9,5 @@ class ImageToASCII(ABC):
         pass
 
     @abstractmethod
-    async def convert_image_to_ascii(self, file_input: FileInputDTO, char_width: int=300) -> FileOutputDTO:
+    async def image_to_ascii(self, image: Image, fpath: Path, char_width: int=300) -> Image:
         pass

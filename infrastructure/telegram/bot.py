@@ -13,7 +13,7 @@ from infrastructure.telegram.services.progress_bar import TelegramProgressBarRen
 from interfaces_adapters.ports_impl.ascii_converter import AsciiConverter
 from interfaces_adapters.ports_impl.birefnet_remover import BiRefNETRemover
 from interfaces_adapters.ports_impl.demucs_separator import DemucsSeparator
-from interfaces_adapters.ports_impl.easyocr_converter import EasyOCRImageToText
+from interfaces_adapters.ports_impl.trocr_converter import EasyOCRImageToText
 from interfaces_adapters.ports_impl.fwhisper_transcriber import FWhisperTranscriber
 from interfaces_adapters.ports_impl.ffmpeg_extractor import FFMpegAudioExtractor
 from interfaces_adapters.ports_impl.realesrgan_upscaler import RealERSGANUpscaler

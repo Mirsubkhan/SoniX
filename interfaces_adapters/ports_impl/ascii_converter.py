@@ -1,16 +1,12 @@
-import asyncio
-from pathlib import Path
-
 from core.ports.image_to_ascii import ImageToASCII
 from PIL import Image, ImageFont, ImageDraw
+from pathlib import Path
 import numpy as np
-from core.entities.file_dto import FileInputDTO, FileOutputDTO
-
-ASCII_CHARS = r"$@B%8&WM#*oahkbdpqwmZ0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. "[::-1]
+import asyncio
 
 class AsciiConverter(ImageToASCII):
-    def __init__(self, chars: str=ASCII_CHARS):
-        self.ascii_chars = chars
+    def __init__(self):
+        self.ascii_chars = r"$@B%8&WM#*oahkbdpqwmZ0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. "[::-1]
         self.font =ImageFont.load_default()
         self.char_width, self.char_height = self._get_char_dimensions()
 
@@ -36,19 +32,16 @@ class AsciiConverter(ImageToASCII):
 
         return ascii_image
 
-    async def convert_image_to_ascii(self, file_input: FileInputDTO, char_width: int = 300) -> FileOutputDTO:
-        image = Image.open(file_input.file_path).convert("RGB")
+    async def image_to_ascii(
+            self,
+            image: Image,
+            fpath: Path,
+            char_width: int = 300
+    ) -> Image.Image:
         resized_image = await self._resize_image(image, target_char_width=char_width)
-
         ascii_img = await self.map_pixels_to_ascii(resized_image)
 
-        output_path: Path = file_input.file_path.with_stem(
-            file_input.file_path.stem + "_ascii"
-        ).with_suffix(".png")
-
-        ascii_img.save(output_path)
-
-        return FileOutputDTO(file_path=output_path)
+        return ascii_img
 
     def _get_char_dimensions(self) -> tuple[int, int]:
         bbox = self.font.getbbox("A")
