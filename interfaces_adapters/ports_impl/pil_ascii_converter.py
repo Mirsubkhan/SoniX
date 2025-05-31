@@ -1,10 +1,11 @@
-from core.ports.image_to_ascii import ImageToASCII
+from core.ports.ascii_converter import ASCIIConverter
 from PIL import Image, ImageFont, ImageDraw
 from pathlib import Path
 import numpy as np
 import asyncio
 
-class AsciiConverter(ImageToASCII):
+
+class PilASCIIConverter(ASCIIConverter):
     def __init__(self):
         self.ascii_chars = r"$@B%8&WM#*oahkbdpqwmZ0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. "[::-1]
         self.font =ImageFont.load_default()
@@ -22,7 +23,7 @@ class AsciiConverter(ImageToASCII):
         for y in range(height):
             for x in range(width):
                 r, g, b = pixels[y, x][:3]
-                char = await self._brightness_to_ascii(r, g, b)
+                char = self._brightness_to_ascii(r, g, b)
                 draw.text(
                     (x * self.char_width, y * self.char_height),
                     char,
@@ -35,7 +36,6 @@ class AsciiConverter(ImageToASCII):
     async def image_to_ascii(
             self,
             image: Image,
-            fpath: Path,
             char_width: int = 300
     ) -> Image.Image:
         resized_image = await self._resize_image(image, target_char_width=char_width)
@@ -47,7 +47,7 @@ class AsciiConverter(ImageToASCII):
         bbox = self.font.getbbox("A")
         return int(bbox[2] - bbox[0]), int(bbox[3] - bbox[1])
 
-    async def _brightness_to_ascii(self, r: int, g: int, b: int) -> str:
+    def _brightness_to_ascii(self, r: int, g: int, b: int) -> str:
         brightness = int(0.299 * r + 0.587 * g + 0.114 * b)
         index = brightness * len(self.ascii_chars) // 256
         return self.ascii_chars[index]

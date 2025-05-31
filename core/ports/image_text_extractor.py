@@ -1,19 +1,20 @@
+from core.entities.file_dto import FileInputDTO
 from abc import ABC, abstractmethod
-from pathlib import Path
 from PIL.Image import Image
-from core.entities.file_dto import FileOutputDTO
+from pathlib import Path
 
-class ImageOCR(ABC):
+
+class ImageTextExtractor(ABC):
     @abstractmethod
     async def image_to_text_handwritten(
             self,
             image: Image,
             fpath: Path
-    ) -> FileOutputDTO:
+    ) -> str:
         """Extracts text from a handwritten image.
 
-        :param image: PIL Image object to process
-        :param fpath: Path to the image file
+        :param image: PIL Image object to process.
+        :param fpath: Path to the image file.
         """
         pass
 
@@ -22,10 +23,10 @@ class ImageOCR(ABC):
             self,
             image: Image,
             fpath: Path
-    ) -> FileOutputDTO:
+    ) -> str:
         """Extracts text from a printed image.
 
-        :param image: PIL Image object to process
-        :param fpath: Path to the image file
+        :param image: PIL Image object to process.
+        :param fpath: Path to the image file.
         """
         pass

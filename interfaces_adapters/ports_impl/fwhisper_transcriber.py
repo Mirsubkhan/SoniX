@@ -1,11 +1,11 @@
-import asyncio
-import aiofiles
-from faster_whisper import WhisperModel
-from core.ports.asr_transcriber import ASRTranscriber, DynamicSSTCallback, STTCallback
+from core.ports.audio_transcriber import AudioTranscriber, DynamicSSTCallback, STTCallback
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
+from faster_whisper import WhisperModel
+from typing import Union
+import asyncio
 
 
-class FWhisperTranscriber(ASRTranscriber):
+class FWhisperTranscriber(AudioTranscriber):
     def __init__(self, model_size="medium", compute_type="auto"):
         self.model = WhisperModel(
             model_size_or_path=model_size,
@@ -13,11 +13,15 @@ class FWhisperTranscriber(ASRTranscriber):
             device="cuda"
         )
 
-    async def transcribe_dynamic(self, file_input: FileInputDTO, on_progress: DynamicSSTCallback) -> None:
-        segments, _ = self._transcribe_segments(file_input)
-
+    async def transcribe_dynamic(
+            self,
+            f_input: FileInputDTO,
+            on_progress: DynamicSSTCallback
+    ) -> None:
+        segments, _ = self._transcribe_segments(f_input)
         current_text = ""
-        last_text = ""
+
+        last_text_part = ""
         last_time = asyncio.get_event_loop().time()
 
         for seg in segments:
@@ -26,50 +30,60 @@ class FWhisperTranscriber(ASRTranscriber):
                 continue
 
             current_text += f"{text_part} "
-            now = asyncio.get_event_loop().time()
+            last_text_part = current_text\
 
+            now = asyncio.get_event_loop().time()
             if now - last_time >= 2.0:
                 msg = current_text if len(current_text) <= 4096 else text_part
                 await on_progress(msg, len(current_text) > 4096)
                 current_text = "" if len(current_text) <= 4096 else text_part
                 last_time = now
-                last_text = ""
+                last_text_part = ""
 
-            last_text = current_text
+        if last_text_part:
+            await on_progress(last_text_part, len(last_text_part) > 4096)
 
-        if last_text:
-            await on_progress(last_text, len(last_text) > 4096)
-
-    async def transcribe(self, file_input: FileInputDTO, on_progress: STTCallback) -> FileOutputDTO:
-        segments, _ = self._transcribe_segments(file_input)
-
+    async def transcribe(
+            self,
+            f_input: FileInputDTO,
+            on_progress: Union[STTCallback, None]
+    ) -> str:
+        segments, _ = self._transcribe_segments(f_input)
         full_text = ""
-        total_secs = file_input.file_duration.total_seconds()
-        seconds_per_heart = total_secs / 10
-        last_update = asyncio.get_event_loop().time()
+
+        progress_tracker = None
+        if on_progress is not None:
+            total_secs = f_input.file_duration.total_seconds()
+            seconds_per_heart = total_secs / 10
+            last_update = asyncio.get_event_loop().time()
+            progress_tracker = (seconds_per_heart, last_update)
 
         for seg in segments:
             text_part = seg.text.strip()
             if not text_part:
                 continue
 
-            full_text += f" {text_part}"
+            full_text += f"{text_part} "
+
+            if progress_tracker is None:
+                continue
+
+            seconds_per_heart, last_update = progress_tracker
             filled_hearts = int(seg.end / seconds_per_heart)
             current_filled = min(filled_hearts, 10)
 
             now = asyncio.get_event_loop().time()
-            if now - last_update >= 2.0:
-                try:
-                    await on_progress(current_filled)
-                except Exception as e:
-                    pass
-                last_update = now
+            if now - last_update < 2.0:
+                continue
 
-        output_path = file_input.file_path.with_suffix(".txt")
-        async with aiofiles.open(output_path, "w") as f:
-            await f.write(full_text.strip())
+            try:
+                await on_progress(current_filled)
+            except Exception:
+                pass
 
-        return FileOutputDTO(file_path=output_path)
+            progress_tracker = (seconds_per_heart, now)
+
+        return full_text.strip()
 
     def _transcribe_segments(self, file_input: FileInputDTO):
         return self.model.transcribe(

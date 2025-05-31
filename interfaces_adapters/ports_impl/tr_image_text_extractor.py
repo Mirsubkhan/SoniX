@@ -1,16 +1,14 @@
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+from core.ports.image_text_extractor import ImageTextExtractor
 from concurrent.futures.thread import ThreadPoolExecutor
 from core.entities.file_dto import FileOutputDTO
-from core.ports.image_ocr import ImageOCR
 from PIL.Image import Image
 from pathlib import Path
 import asyncio
 
 
-class TrOCRImageToText(ImageOCR):
-    def __init__(self, output_dir: Path = Path("./results/image_to_text")):
-        self.output_dir = output_dir.resolve()
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+class TrImageTextExtractor(ImageTextExtractor):
+    def __init__(self):
         self.executor = ThreadPoolExecutor(max_workers=4)
 
         self.h_processor = TrOCRProcessor.from_pretrained('microsoft/trocr-base-handwritten').to("cuda")
@@ -23,33 +21,22 @@ class TrOCRImageToText(ImageOCR):
             self,
             image: Image,
             fpath: Path
-    ) -> FileOutputDTO:
-
-        result_text = await asyncio.get_event_loop().run_in_executor(
+    ) -> str:
+        return await asyncio.get_event_loop().run_in_executor(
             self.executor,
             self._process_handwritten,
             image
-        )
-
-        return FileOutputDTO(
-            file_path=self.output_dir / f"{fpath.stem}.txt",
-            file_txt=result_text
         )
 
     async def image_to_text_printed(
             self,
             image: Image,
             fpath: Path
-    ) -> FileOutputDTO:
-        result_text = await asyncio.get_event_loop().run_in_executor(
+    ) -> str:
+        return await asyncio.get_event_loop().run_in_executor(
             self.executor,
             self._process_printed,
             image
-        )
-
-        return FileOutputDTO(
-            file_path=self.output_dir / f"{fpath.stem}.txt",
-            file_txt=result_text
         )
 
     def _process_handwritten(self, image: Image) -> str:

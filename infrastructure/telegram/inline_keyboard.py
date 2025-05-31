@@ -29,3 +29,10 @@ transform_options_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="250", callback_data=f"250")],
     [InlineKeyboardButton(text="300", callback_data=f"300")]
 ])
+
+
+trocr_options_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Рукописный", callback_data=f"handwritten")],
+    [InlineKeyboardButton(text="Печатный", callback_data=f"printed")]
+])
+

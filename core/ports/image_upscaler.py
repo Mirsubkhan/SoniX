@@ -5,5 +5,5 @@ from numpy import ndarray
 
 class ImageUpscaler(ABC):
     @abstractmethod
-    async def upscale_image(self, image: ndarray, fpath: Path) -> FileOutputDTO:
+    async def upscale_image(self, image: ndarray, fpath: Path) -> ndarray:
         pass

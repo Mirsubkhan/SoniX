@@ -13,20 +13,16 @@ model_path = r"C:\Users\Guest8\Desktop\GAR8S\Programming\Python\SoniX\RealESRGAN
 state_dict = torch.load(model_path, map_location=torch.device("cuda"))['params_ema']
 
 class RealERSGANUpscaler(ImageUpscaler):
-    def __init__(self, output_dir: Path = Path("./results/upscaled_images")):
-        self.output_dir = output_dir.resolve()
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self):
         self.model = RRDBNet(num_in_ch=3, num_out_ch=3, scale=4)
         self.model.load_state_dict(state_dict=state_dict, strict=True)
 
         self.up_sampler = RealESRGANer(scale=4, model_path=model_path, model=self.model, tile=0, pre_pad=0, half=True, tile_pad=10)
 
-    async def upscale_image(self, image: ndarray, fpath: Path) -> FileOutputDTO:
+    async def upscale_image(self, image: ndarray, fpath: Path) -> ndarray:
         output, _ = await asyncio.to_thread(
             self.up_sampler.enhance, img=image, outscale=4
         )
 
-        output_dir = self.output_dir.joinpath(fpath.stem + ".png")
-
-        return FileOutputDTO(file_path=output_dir)
+        return output
 
