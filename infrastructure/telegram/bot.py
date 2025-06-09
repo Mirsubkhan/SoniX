@@ -15,7 +15,7 @@ from interfaces_adapters.ports_impl.file_io_handler import FileIOHandler
 from interfaces_adapters.ports_impl.pil_ascii_converter import PilASCIIConverter
 from interfaces_adapters.ports_impl.birefnet_bg_remover import BiRefNETBgRemover
 from interfaces_adapters.ports_impl.demucs_separator import DemucsSeparator
-from interfaces_adapters.ports_impl.tr_image_text_extractor import TrImageTextExtractor
+from interfaces_adapters.ports_impl.easyocr_image_text_extractor import EasyOCRImageTextExtractor
 from interfaces_adapters.ports_impl.fwhisper_transcriber import FWhisperTranscriber
 from interfaces_adapters.ports_impl.ffmpeg_extractor import FFMpegAudioExtractor
 from interfaces_adapters.ports_impl.realesrgan_upscaler import RealERSGANUpscaler
@@ -51,7 +51,7 @@ async def create_dispatcher():
                                  separator=DemucsSeparator(),
                                  progress_bar=TelegramProgressBarRenderer(),
                                  bg_remover=BiRefNETBgRemover(),
-                                 image_text_extractor=TrImageTextExtractor(),
+                                 image_text_extractor=EasyOCRImageTextExtractor(),
                                  upscaler=RealERSGANUpscaler(),
                                  file_handler=FileIOHandler(),
                                  client=storage)

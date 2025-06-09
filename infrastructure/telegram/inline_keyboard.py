@@ -5,7 +5,7 @@ video_process_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 photo_process_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="Извлечь текст", callback_data=f"extract_text")],
+    [InlineKeyboardButton(text="Извлечь печатный текст", callback_data=f"extract_text")],
     [InlineKeyboardButton(text="Улучшить качество", callback_data=f"upscale_image")],
     [InlineKeyboardButton(text="Удалить фон", callback_data=f"remove_bg")],
     [InlineKeyboardButton(text="Трансформировать в ASCII", callback_data=f"transform_to_ascii")]
@@ -29,10 +29,3 @@ transform_options_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="250", callback_data=f"250")],
     [InlineKeyboardButton(text="300", callback_data=f"300")]
 ])
-
-
-trocr_options_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="Рукописный", callback_data=f"handwritten")],
-    [InlineKeyboardButton(text="Печатный", callback_data=f"printed")]
-])
-

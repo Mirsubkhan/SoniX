@@ -11,12 +11,11 @@ class ImageTextExtractorUseCase:
         self.converter = converter
         self.file_handler = file_handler
 
-    async def image_to_text(self, f_input: FileInputDTO, is_handwritten: bool) -> FileOutputDTO:
-        image = await self.file_handler.open_img(f_input.file_path)
+    async def image_to_text(self, f_input: FileInputDTO) -> FileOutputDTO:
+        output_list = await self.converter.image_to_text(fpath=f_input.file_path)
+        output_text = ' '.join(item[1] for item in output_list)
 
-        if is_handwritten:
-            output_text = await self.converter.image_to_text_handwritten(fpath=f_input.file_path, image=image)
-        else:
-            output_text = await self.converter.image_to_text_printed(fpath=f_input.file_path, image=image)
+        if not output_text.strip():
+            output_text = "П-У-С-Т-О-Т-А"
 
         return await self.file_handler.save_as_txt(fpath=self.output_dir / f"{f_input.file_path.stem}.txt", text=output_text)

@@ -6,27 +6,12 @@ from pathlib import Path
 
 class ImageTextExtractor(ABC):
     @abstractmethod
-    async def image_to_text_handwritten(
+    async def image_to_text(
             self,
-            image: Image,
             fpath: Path
     ) -> str:
-        """Extracts text from a handwritten image.
+        """Extracts text from an image.
 
-        :param image: PIL Image object to process.
-        :param fpath: Path to the image file.
-        """
-        pass
-
-    @abstractmethod
-    async def image_to_text_printed(
-            self,
-            image: Image,
-            fpath: Path
-    ) -> str:
-        """Extracts text from a printed image.
-
-        :param image: PIL Image object to process.
         :param fpath: Path to the image file.
         """
         pass
