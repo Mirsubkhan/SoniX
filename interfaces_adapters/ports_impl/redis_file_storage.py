@@ -10,11 +10,12 @@ from core.entities.file import File, FileType
 from core.entities.file_dto import FileInputDTO
 from core.ports.file_storage import FileStorage
 
+
 class RedisFileStorage(FileStorage):
     def __init__(self, redis: Redis):
         self.redis = redis
 
-    async def save(self, file: File, ttl_seconds: int) -> None:
+    async def save(self, file: File) -> None:
         key = f"user:{file.user_id}:file"
         data = {
             "file_id": str(file.file_id),

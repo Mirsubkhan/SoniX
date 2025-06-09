@@ -6,14 +6,15 @@ import subprocess
 import asyncio
 import sys
 
-class DemucsSeparator(AudioSeparator):
+
+class DemucsAudioSeparator(AudioSeparator):
     def __init__(self, output_dir: Path = Path("./results/separated")):
         self.output_dir = output_dir.resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     async def separate(
             self,
-            f_input: FileInputDTO,
+            file_input: FileInputDTO,
             on_progress: Union[SeparatorProgressCallback, None]
     ) -> FileOutputDTO:
         cmd = [
@@ -23,7 +24,7 @@ class DemucsSeparator(AudioSeparator):
             "-n", "mdx_extra",
             "-d", "cuda",
             "-o", str(self.output_dir),
-            str(f_input.file_path)
+            str(file_input.file_path)
         ]
 
         process = await asyncio.create_subprocess_exec(
@@ -57,10 +58,11 @@ class DemucsSeparator(AudioSeparator):
                             pass
 
         await process.wait()
+
         if process.returncode != 0:
             raise RuntimeError(f"Demucs failed with code: {process.returncode}")
 
-        result_dir = FileOutputDTO(file_path=self.output_dir / f_input.file_path.stem)
+        result_dir = FileOutputDTO(file_path=self.output_dir / file_input.file_path.stem)
         if not result_dir.file_path.exists():
             raise ValueError(f"Demucs didn't create the dir with results: {result_dir.file_path}")
 

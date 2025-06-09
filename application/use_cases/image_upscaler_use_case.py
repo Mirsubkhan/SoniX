@@ -1,8 +1,8 @@
-from pathlib import Path
-
 from application.use_cases.file_handler_use_case import FileHandlerUseCase
 from core.entities.file_dto import FileInputDTO, FileOutputDTO
 from core.ports.image_upscaler import ImageUpscaler
+from pathlib import Path
+
 
 class ImageUpscalerUseCase:
     def __init__(self, upscaler: ImageUpscaler, file_handler: FileHandlerUseCase):

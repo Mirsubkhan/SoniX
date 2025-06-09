@@ -9,7 +9,7 @@ class FileStorageUseCase:
         self.redis = redis
 
     async def save(self, file: File) -> None:
-        await self.redis.save(file=file, ttl_seconds=2600)
+        await self.redis.save(file=file)
 
     async def get_file_by_uid(self, user_id: int) -> Union[FileInputDTO, None]:
         return await self.redis.get_file_by_user_id(user_id=user_id)

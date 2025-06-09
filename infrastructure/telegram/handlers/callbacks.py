@@ -1,14 +1,10 @@
-import os
 from aiogram import Router
 from aiogram.types import CallbackQuery, FSInputFile
-from aiogram.fsm.context import FSMContext
-from redis.asyncio import Redis
-
 from application.use_cases.audio_extractor_use_case import AudioExtractorUseCase
 from application.use_cases.file_handler_use_case import FileHandlerUseCase
-from application.use_cases.image_text_extractor_use_case import ImageTextExtractorUseCase
+from application.use_cases.image2text_use_case import Image2TextUseCase
 from application.use_cases.file_storage_use_case import FileStorageUseCase
-from application.use_cases.remove_bg_use_case import BgRemoverUseCase
+from application.use_cases.bg_remover_use_case import BgRemoverUseCase
 from application.use_cases.image_upscaler_use_case import ImageUpscalerUseCase
 from core.entities.file_dto import FileInputDTO
 from core.ports.audio_extractor import AudioExtractor
@@ -17,9 +13,9 @@ from core.ports.audio_transcriber import AudioTranscriber
 from core.ports.bg_remover import BgRemover
 from core.ports.file_handler import FileHandler
 from core.ports.file_storage import FileStorage
-from core.ports.image_text_extractor import ImageTextExtractor
+from core.ports.image2text import Image2Text
 from core.ports.image_upscaler import ImageUpscaler
-from core.ports.ascii_converter import ASCIIConverter
+from core.ports.art_converter import ArtConverter
 from infrastructure.telegram.bot_answers import data_lost, transcribe_options, listening_file, demucs_error, \
     ascii_options, ascii_wait_message, ascii_ready, transcribe_ready, removing_bg, ocr_error, bg_error, extracting_text, \
     upscaling, realesrgan_error
@@ -33,11 +29,11 @@ def setup_handlers(
         router: Router,
         transcriber: AudioTranscriber,
         extractor: AudioExtractor,
-        ascii_converter: ASCIIConverter,
+        ascii_converter: ArtConverter,
         separator: AudioSeparator,
         progress_bar: TelegramProgressBarRenderer,
         bg_remover: BgRemover,
-        image_text_extractor: ImageTextExtractor,
+        image_text_extractor: Image2Text,
         upscaler: ImageUpscaler,
         file_handler: FileHandler,
         client: FileStorage
@@ -49,7 +45,6 @@ def setup_handlers(
 
         redis = FileStorageUseCase(redis=client)
         file = await redis.get_file_by_uid(user_id=callback.from_user.id)
-        print(file)
 
         if not file:
             await callback.message.answer(text=data_lost, parse_mode="HTML")
@@ -107,7 +102,7 @@ def setup_handlers(
             edit_msg = await callback.message.answer(extracting_text, parse_mode="HTML")
             file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
                                       file_type=file.file_type)
-            file_output = await ImageTextExtractorUseCase(converter=image_text_extractor,
+            file_output = await Image2TextUseCase(converter=image_text_extractor,
                                                           file_handler=FileHandlerUseCase(
                                                               file_repo=file_handler)).image_to_text(f_input=file_input)
             if file_output:
@@ -158,7 +153,7 @@ def setup_handlers(
 
         await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
 
-    @router.callback_query(lambda f: f.data in ("100", "200", "300", "400", "500"))
+    @router.callback_query(lambda f: f.data in ("100", "150", "200", "250", "300"))
     async def convert_to_ascii_callback(callback: CallbackQuery):
         await callback.message.delete()
         await callback.answer()

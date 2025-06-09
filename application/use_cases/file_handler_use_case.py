@@ -1,9 +1,9 @@
-from pathlib import Path
-from PIL import Image
-
 from core.entities.file_dto import FileOutputDTO
 from core.ports.file_handler import FileHandler
 from numpy import ndarray
+from pathlib import Path
+from PIL import Image
+
 
 class FileHandlerUseCase:
     def __init__(self, file_repo: FileHandler):

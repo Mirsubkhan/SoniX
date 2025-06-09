@@ -1,11 +1,11 @@
 from core.ports.audio_transcriber import AudioTranscriber, DynamicSSTCallback, STTCallback
-from core.entities.file_dto import FileInputDTO, FileOutputDTO
+from core.entities.file_dto import FileInputDTO
 from faster_whisper import WhisperModel
 from typing import Union
 import asyncio
 
 
-class FWhisperTranscriber(AudioTranscriber):
+class FWhisperAudioTranscriber(AudioTranscriber):
     def __init__(self, model_size="medium", compute_type="auto"):
         self.model = WhisperModel(
             model_size_or_path=model_size,
@@ -15,10 +15,10 @@ class FWhisperTranscriber(AudioTranscriber):
 
     async def transcribe_dynamic(
             self,
-            f_input: FileInputDTO,
+            file_input: FileInputDTO,
             on_progress: DynamicSSTCallback
     ) -> None:
-        segments, _ = self._transcribe_segments(f_input)
+        segments, _ = self._transcribe_segments(file_input)
         current_text = ""
 
         last_text_part = ""
@@ -45,15 +45,15 @@ class FWhisperTranscriber(AudioTranscriber):
 
     async def transcribe(
             self,
-            f_input: FileInputDTO,
+            file_input: FileInputDTO,
             on_progress: Union[STTCallback, None]
     ) -> str:
-        segments, _ = self._transcribe_segments(f_input)
+        segments, _ = self._transcribe_segments(file_input)
         full_text = ""
 
         progress_tracker = None
         if on_progress is not None:
-            total_secs = f_input.file_duration.total_seconds()
+            total_secs = file_input.file_duration.total_seconds()
             seconds_per_heart = total_secs / 10
             last_update = asyncio.get_event_loop().time()
             progress_tracker = (seconds_per_heart, last_update)

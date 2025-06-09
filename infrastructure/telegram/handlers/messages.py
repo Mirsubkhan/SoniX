@@ -34,13 +34,6 @@ def setup_handlers(router: Router, file_worker: TelegramFileWorker, client: File
                 file_duration=None if message.photo else timedelta(seconds=message_file.duration)
             )
 
-            print(f"{file.file_id}\n"
-                  f"{file.file_path}\n"
-                  f"{file.file_type}\n"
-                  f"{file.file_format}\n"
-                  f"{file.user_id}\n"
-                  f"{file.file_duration}")
-
             await FileStorageUseCase(redis=client).save(file=file)
 
             await message.reply(

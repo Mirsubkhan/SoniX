@@ -3,6 +3,7 @@ from core.entities.file_dto import FileInputDTO, FileOutputDTO
 from core.ports.bg_remover import BgRemover
 from pathlib import Path
 
+
 class BgRemoverUseCase:
     def __init__(self, remover: BgRemover, f_handler: FileHandlerUseCase):
         self.output_dir = Path("./results/removed_bgs").resolve()

@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from aiogram.fsm.storage.memory import MemoryStorage
 from redis.asyncio import Redis
 
-from application.use_cases.file_handler_use_case import FileHandlerUseCase
 from infrastructure.telegram.handlers import messages, callbacks, commands
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiohttp import ClientTimeout
@@ -12,12 +11,12 @@ from aiohttp import ClientTimeout
 from infrastructure.telegram.services.file_worker import TelegramFileWorker
 from infrastructure.telegram.services.progress_bar import TelegramProgressBarRenderer
 from interfaces_adapters.ports_impl.file_io_handler import FileIOHandler
-from interfaces_adapters.ports_impl.pil_ascii_converter import PilASCIIConverter
+from interfaces_adapters.ports_impl.ascii_converter import ASCIIConverter
 from interfaces_adapters.ports_impl.birefnet_bg_remover import BiRefNETBgRemover
-from interfaces_adapters.ports_impl.demucs_separator import DemucsSeparator
-from interfaces_adapters.ports_impl.easyocr_image_text_extractor import EasyOCRImageTextExtractor
-from interfaces_adapters.ports_impl.fwhisper_transcriber import FWhisperTranscriber
-from interfaces_adapters.ports_impl.ffmpeg_extractor import FFMpegAudioExtractor
+from interfaces_adapters.ports_impl.demucs_audio_separator import DemucsAudioSeparator
+from interfaces_adapters.ports_impl.easyocr_image2text import EasyOCRImage2Text
+from interfaces_adapters.ports_impl.fwhisper_audio_transcriber import FWhisperAudioTranscriber
+from interfaces_adapters.ports_impl.ffmpeg_audio_extractor import FFMpegAudioExtractor
 from interfaces_adapters.ports_impl.realesrgan_upscaler import RealERSGANUpscaler
 from interfaces_adapters.ports_impl.redis_file_storage import RedisFileStorage
 
@@ -45,13 +44,13 @@ async def create_dispatcher():
                                 file_worker=TelegramFileWorker(),
                                 client=storage),
         callbacks.setup_handlers(router=Router(),
-                                 transcriber=FWhisperTranscriber(),
+                                 transcriber=FWhisperAudioTranscriber(),
                                  extractor=FFMpegAudioExtractor(),
-                                 ascii_converter=PilASCIIConverter(),
-                                 separator=DemucsSeparator(),
+                                 ascii_converter=ASCIIConverter(),
+                                 separator=DemucsAudioSeparator(),
                                  progress_bar=TelegramProgressBarRenderer(),
                                  bg_remover=BiRefNETBgRemover(),
-                                 image_text_extractor=EasyOCRImageTextExtractor(),
+                                 image_text_extractor=EasyOCRImage2Text(),
                                  upscaler=RealERSGANUpscaler(),
                                  file_handler=FileIOHandler(),
                                  client=storage)

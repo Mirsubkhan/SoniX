@@ -1,14 +1,11 @@
-import asyncio
-import warnings
 from concurrent.futures.thread import ThreadPoolExecutor
-from pathlib import Path
-from PIL.Image import Image
-from core.entities.file_dto import FileInputDTO, FileOutputDTO
-from core.ports.bg_remover import BgRemover
-import torch
 from transformers import AutoModelForImageSegmentation
+from core.ports.bg_remover import BgRemover
 from torchvision import transforms
-import tensorflow as tf
+from PIL.Image import Image
+import asyncio
+import torch
+
 
 class BiRefNETBgRemover(BgRemover):
     def __init__(self):

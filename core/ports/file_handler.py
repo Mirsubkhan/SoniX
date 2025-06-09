@@ -4,6 +4,7 @@ from numpy import ndarray
 from pathlib import Path
 from PIL import Image
 
+
 class FileHandler(ABC):
     @abstractmethod
     async def open_img(self, fpath: Path) -> Image:

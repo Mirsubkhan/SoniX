@@ -1,9 +1,14 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
-from core.entities.file_dto import FileInputDTO, FileOutputDTO
 from numpy import ndarray
+from pathlib import Path
+
 
 class ImageUpscaler(ABC):
     @abstractmethod
     async def upscale_image(self, image: ndarray, fpath: Path) -> ndarray:
+        """Increases image quality and returns ndarray object
+
+        :param image: ndarray object
+        :param fpath: Path object
+        """
         pass

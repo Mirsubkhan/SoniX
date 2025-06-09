@@ -17,26 +17,26 @@ class AudioTranscriberUseCase:
 
     async def transcribe_dynamic(
             self,
-            f_input: FileInputDTO,
+            file_input: FileInputDTO,
             on_progress: DynamicSSTCallback
     ) -> None:
-        f_input.file_path = await self._extract_audio(f_input=f_input)
-        await self.transcriber.transcribe_dynamic(f_input=f_input, on_progress=on_progress)
+        file_input.file_path = await self._extract_audio(file_input=file_input)
+        await self.transcriber.transcribe_dynamic(file_input=file_input, on_progress=on_progress)
 
     async def transcribe(
             self,
-            f_input: FileInputDTO,
+            file_input: FileInputDTO,
             on_progress: Union[STTCallback, None]
     ) -> FileOutputDTO:
-        f_input.file_path = await self._extract_audio(f_input=f_input)
-        result_text = await self.transcriber.transcribe(f_input=f_input, on_progress=on_progress)
-        output_path = self.output_dir.joinpath(f_input.file_path.stem + ".txt")
+        file_input.file_path = await self._extract_audio(file_input=file_input)
+        result_text = await self.transcriber.transcribe(file_input=file_input, on_progress=on_progress)
+        output_path = self.output_dir.joinpath(file_input.file_path.stem + ".txt")
 
         return await self.f_handler.save_as_txt(fpath=output_path, text=result_text)
 
-    async def _extract_audio(self, f_input: FileInputDTO) -> Path:
-        if f_input.file_type == FileType.VIDEO:
-            file_output = await self.extractor.extract(file_input=f_input)
-            f_input.file_path = file_output.file_path
+    async def _extract_audio(self, file_input: FileInputDTO) -> Path:
+        if file_input.file_type == FileType.VIDEO:
+            file_output = await self.extractor.extract(file_input=file_input)
+            file_input.file_path = file_output.file_path
 
-        return f_input.file_path
+        return file_input.file_path

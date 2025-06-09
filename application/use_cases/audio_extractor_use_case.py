@@ -6,4 +6,4 @@ class AudioExtractorUseCase:
         self.extractor = extractor
 
     async def extract(self, file_input: FileInputDTO) -> FileOutputDTO:
-        return await self.extractor.extract_audio_from_video(file_input)
+        return await self.extractor.extract_audio(file_input)

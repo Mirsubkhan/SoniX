@@ -1,13 +1,12 @@
-import asyncio
-from pathlib import Path
-
-import aiofiles
-import cv2
-from PIL import Image
-
 from core.entities.file_dto import FileOutputDTO
 from core.ports.file_handler import FileHandler
 from numpy import ndarray
+from pathlib import Path
+from PIL import Image
+import aiofiles
+import asyncio
+import cv2
+
 
 class FileIOHandler(FileHandler):
     async def open_img(self, path: Path) -> Image:

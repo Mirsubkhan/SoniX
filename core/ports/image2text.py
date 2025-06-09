@@ -1,10 +1,8 @@
-from core.entities.file_dto import FileInputDTO
 from abc import ABC, abstractmethod
-from PIL.Image import Image
 from pathlib import Path
 
 
-class ImageTextExtractor(ABC):
+class Image2Text(ABC):
     @abstractmethod
     async def image_to_text(
             self,

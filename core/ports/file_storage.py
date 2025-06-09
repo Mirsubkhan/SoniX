@@ -7,7 +7,7 @@ from typing import Union
 
 class FileStorage(ABC):
     @abstractmethod
-    async def save(self , file: File, ttl_seconds: int) -> None:
+    async def save(self , file: File) -> None:
         pass
 
     @abstractmethod
