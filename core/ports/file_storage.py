@@ -11,7 +11,7 @@ class FileStorage(ABC):
         pass
 
     @abstractmethod
-    async def get_file_by_user_id(self, user_id: int) -> Union[FileInputDTO, None]:
+    async def get_file_by_user_id(self, user_id: int, full: bool) -> Union[File, FileInputDTO, None]:
         pass
 
     @abstractmethod

@@ -11,8 +11,8 @@ class FileStorageUseCase:
     async def save(self, file: File) -> None:
         await self.redis.save(file=file)
 
-    async def get_file_by_uid(self, user_id: int) -> Union[FileInputDTO, None]:
-        return await self.redis.get_file_by_user_id(user_id=user_id)
+    async def get_file_by_uid(self, user_id: int, full: bool = False) -> Union[File, FileInputDTO, None]:
+        return await self.redis.get_file_by_user_id(user_id=user_id, full=full)
 
     async def delete_file_by_uid(self, user_id: int) -> None:
         return await self.redis.delete_file_by_user_id(user_id=user_id)

@@ -6,6 +6,7 @@ from application.use_cases.image2text_use_case import Image2TextUseCase
 from application.use_cases.file_storage_use_case import FileStorageUseCase
 from application.use_cases.bg_remover_use_case import BgRemoverUseCase
 from application.use_cases.image_upscaler_use_case import ImageUpscalerUseCase
+from core.entities.file import FileType
 from core.entities.file_dto import FileInputDTO
 from core.ports.audio_extractor import AudioExtractor
 from core.ports.audio_separator import AudioSeparator
@@ -18,9 +19,10 @@ from core.ports.image_upscaler import ImageUpscaler
 from core.ports.art_converter import ArtConverter
 from infrastructure.telegram.bot_answers import data_lost, transcribe_options, listening_file, demucs_error, \
     ascii_options, ascii_wait_message, ascii_ready, transcribe_ready, removing_bg, ocr_error, bg_error, extracting_text, \
-    upscaling, realesrgan_error
+    upscaling, realesrgan_error, transcribe_options2
 from infrastructure.telegram.services.progress_bar import TelegramProgressBarRenderer
-from infrastructure.telegram.inline_keyboard import return_as_file_keyboard, transform_options_keyboard
+from infrastructure.telegram.inline_keyboard import return_as_file_keyboard, transform_options_keyboard, \
+    transcribe_q_keyboard
 from application.use_cases.audio_separator_use_case import AudioSeparatorUseCase
 from application.use_cases.ascii_converter_use_case import ASCIIConverterUseCase
 from application.use_cases.audio_transcriber_use_case import AudioTranscriberUseCase
@@ -55,7 +57,7 @@ def setup_handlers(
         if action == "transcribe":
             await callback.message.answer(
                 text=transcribe_options,
-                reply_markup=return_as_file_keyboard,
+                reply_markup=transcribe_q_keyboard,
                 parse_mode="HTML"
             )
 
@@ -129,6 +131,40 @@ def setup_handlers(
             else:
                 await callback.message.answer(realesrgan_error)
 
+    @router.callback_query(lambda f: f.data in ['no_separate', 'yes_separate'])
+    async def transcribe_callback(callback: CallbackQuery):
+        await callback.message.delete()
+        await callback.answer()
+
+        redis = FileStorageUseCase(redis=client)
+        file = await redis.get_file_by_uid(user_id=callback.from_user.id, full=True)
+        action = callback.data.lower()
+
+        if action == "yes_separate":
+            edit_msg = await callback.message.answer(listening_file, parse_mode="HTML")
+            progress_bar.bot = callback.bot
+            progress_bar.message_id = edit_msg.message_id
+            progress_bar.chat_id = callback.message.chat.id
+            file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
+                                      file_type=file.file_type)
+            file_output = await AudioSeparatorUseCase(separator=separator,
+                                                      extractor=AudioExtractorUseCase(extractor=extractor)).separate(
+                file_input, on_progress=progress_bar.demucs_progress_callback)
+
+            if file_output:
+                await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
+                file.file_path = file_output.file_path.joinpath("vocals.mp3")
+                file.file_format = ".wav"
+                file.file_type = FileType.AUDIO
+                await redis.save(file)
+            else:
+                await callback.message.answer(demucs_error)
+
+        await callback.message.answer(
+            text=transcribe_options2,
+            reply_markup=return_as_file_keyboard,
+            parse_mode="HTML"
+        )
 
     @router.callback_query(lambda f: f.data in ['file', 'no_file'])
     async def transcribe_callback(callback: CallbackQuery):

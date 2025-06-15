@@ -28,11 +28,22 @@ class RedisFileStorage(FileStorage):
 
         await self.redis.set(key, json_data)
 
-    async def get_file_by_user_id(self, user_id: int) -> Union[FileInputDTO, None]:
+    async def get_file_by_user_id(self, user_id: int, full: bool) -> Union[File, FileInputDTO, None]:
         raw = await self.redis.get(f"user:{user_id}:file")
 
         if raw:
             data = json.loads(raw)
+
+            if full:
+                return File(
+                    user_id=user_id,
+                    file_id=data["file_id"],
+                    file_path=Path(data["file_path"]),
+                    file_duration=timedelta(seconds=data["file_duration"]) if data["file_duration"] else None,
+                    file_type=FileType(data["file_type"]),
+                    file_format=data["file_format"]
+                )
+
             return FileInputDTO(
                 file_path=Path(data["file_path"]),
                 file_duration=timedelta(seconds=data["file_duration"]) if data["file_duration"] else None,

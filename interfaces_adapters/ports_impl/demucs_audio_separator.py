@@ -62,7 +62,7 @@ class DemucsAudioSeparator(AudioSeparator):
         if process.returncode != 0:
             raise RuntimeError(f"Demucs failed with code: {process.returncode}")
 
-        result_dir = FileOutputDTO(file_path=self.output_dir / file_input.file_path.stem)
+        result_dir = FileOutputDTO(file_path=self.output_dir / "mdx_extra" / file_input.file_path.stem)
         if not result_dir.file_path.exists():
             raise ValueError(f"Demucs didn't create the dir with results: {result_dir.file_path}")
 

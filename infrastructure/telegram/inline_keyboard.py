@@ -22,6 +22,11 @@ return_as_file_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="В этом чате", callback_data=f"no_file")]
 ])
 
+transcribe_q_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Не хочу", callback_data=f"no_separate")],
+    [InlineKeyboardButton(text="Хочу", callback_data=f"yes_separate")]
+])
+
 transform_options_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="100", callback_data=f"100")],
     [InlineKeyboardButton(text="150", callback_data=f"150")],

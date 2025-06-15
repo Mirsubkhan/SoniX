@@ -4,7 +4,7 @@ from faster_whisper import WhisperModel
 from typing import Union
 import asyncio
 
-
+# large-v3
 class FWhisperAudioTranscriber(AudioTranscriber):
     def __init__(self, model_size="medium", compute_type="auto"):
         self.model = WhisperModel(
@@ -30,18 +30,18 @@ class FWhisperAudioTranscriber(AudioTranscriber):
                 continue
 
             current_text += f"{text_part} "
-            last_text_part = current_text\
+            last_text_part = f"{text_part} "
 
             now = asyncio.get_event_loop().time()
             if now - last_time >= 2.0:
                 msg = current_text if len(current_text) <= 4096 else text_part
                 await on_progress(msg, len(current_text) > 4096)
-                current_text = "" if len(current_text) <= 4096 else text_part
+                current_text = current_text if len(current_text) <= 4096 else text_part
                 last_time = now
-                last_text_part = ""
 
-        if last_text_part:
-            await on_progress(last_text_part, len(last_text_part) > 4096)
+        if current_text:
+            msg = current_text if len(current_text) <= 4096 else last_text_part
+            await on_progress(msg, len(current_text) > 4096)
 
     async def transcribe(
             self,
