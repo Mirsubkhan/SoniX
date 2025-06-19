@@ -4,9 +4,9 @@ from faster_whisper import WhisperModel
 from typing import Union
 import asyncio
 
-# large-v3
+
 class FWhisperAudioTranscriber(AudioTranscriber):
-    def __init__(self, model_size="medium", compute_type="auto"):
+    def __init__(self, model_size="large-v3", compute_type="auto"):
         self.model = WhisperModel(
             model_size_or_path=model_size,
             compute_type=compute_type,
