@@ -30,18 +30,21 @@ class FWhisperAudioTranscriber(AudioTranscriber):
                 continue
 
             current_text += f"{text_part} "
-            last_text_part = f"{text_part} "
 
             now = asyncio.get_event_loop().time()
             if now - last_time >= 2.0:
                 msg = current_text if len(current_text) <= 4096 else text_part
-                await on_progress(msg, len(current_text) > 4096)
+                if msg != last_text_part:
+                    await on_progress(msg, len(current_text) > 4096)
+                    last_text_part = msg
                 current_text = current_text if len(current_text) <= 4096 else text_part
                 last_time = now
 
+
         if current_text:
-            msg = current_text if len(current_text) <= 4096 else last_text_part
-            await on_progress(msg, len(current_text) > 4096)
+            msg = current_text if len(current_text) <= 4096 else current_text[-4096:]
+            if msg != last_text_part and msg.strip() != "":
+                await on_progress(msg, len(current_text) > 4096)
 
     async def transcribe(
             self,

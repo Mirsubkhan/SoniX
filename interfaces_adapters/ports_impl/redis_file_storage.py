@@ -19,6 +19,7 @@ class RedisFileStorage(FileStorage):
         key = f"user:{file.user_id}:file"
         data = {
             "file_id": str(file.file_id),
+            "message_id": file.message_id,
             "file_path": str(file.file_path),
             "file_type": file.file_type.value,
             "file_duration": file.file_duration.total_seconds() if file.file_duration else None,
@@ -37,6 +38,7 @@ class RedisFileStorage(FileStorage):
             if full:
                 return File(
                     user_id=user_id,
+                    message_id=int(data["message_id"]),
                     file_id=data["file_id"],
                     file_path=Path(data["file_path"]),
                     file_duration=timedelta(seconds=data["file_duration"]) if data["file_duration"] else None,

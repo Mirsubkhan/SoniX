@@ -173,6 +173,7 @@ def setup_handlers(
         char_width = int(callback.data.split(":")[1].lower())
         file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
                                   file_type=file.file_type)
+
         edit_msg = await callback.message.answer(ascii_wait_message, parse_mode="HTML")
         progress_bar.bot = callback.bot
         progress_bar.message_id = edit_msg.message_id
@@ -222,5 +223,6 @@ def setup_handlers(
 
         elif action == "process" and event in process_actions:
             await process_actions[event](callback=callback, redis=redis, file=file)
+
 
     return router

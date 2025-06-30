@@ -1,5 +1,6 @@
 from core.ports.art_converter import ArtConverter
 from PIL import Image, ImageFont, ImageDraw
+from pathlib import Path
 import numpy as np
 import asyncio
 
@@ -7,7 +8,8 @@ import asyncio
 class ASCIIConverter(ArtConverter):
     def __init__(self):
         self.ascii_chars = r"$@B%8&WM#*oahkbdpqwmZ0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. "[::-1]
-        self.font = ImageFont.load_default()
+        self.font_path = Path(r"C:\Users\Guest8\Desktop\GAR8S\Programming\Python\SoniX\Montserrat-ExtraBold.ttf")
+        self.font = ImageFont.truetype(str(self.font_path))
         self.char_width, self.char_height = self._get_char_dimensions()
 
     async def image_to_ascii(self, image: Image.Image, char_width: int = 300) -> Image.Image:
@@ -53,3 +55,5 @@ class ASCIIConverter(ArtConverter):
         brightness = int(0.299 * r + 0.587 * g + 0.114 * b)
         index = brightness * len(self.ascii_chars) // 256
         return self.ascii_chars[index]
+
+

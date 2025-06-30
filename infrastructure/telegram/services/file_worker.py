@@ -62,6 +62,7 @@ class TelegramFileWorker:
 
         return File(
             user_id=message.from_user.id,
+            message_id=None,
             file_id=file_id,
             file_path=file_path,
             file_type=file_type,

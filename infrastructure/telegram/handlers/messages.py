@@ -11,17 +11,29 @@ import traceback
 def setup_handlers(router: Router, file_worker: TelegramFileWorker, client: FileStorage):
     @router.message(media_filter)
     async def media_handler(message: Message):
+        edit_msg = await message.reply(text=loading_file, parse_mode="HTML")
+
         try:
-            edit_msg = await message.reply(text=loading_file, parse_mode="HTML")
+            redis = FileStorageUseCase(redis=client)
+            old_file = await redis.get_file_by_uid(user_id=message.from_user.id, full=True)
+
+            if old_file is not None:
+                try:
+                    await message.bot.delete_message(chat_id=message.chat.id, message_id=old_file.message_id)
+                    await redis.delete_file_by_uid(message.from_user.id)
+                except Exception as e:
+                    pass
+
             file = await file_worker.get_message_file(message=message)
 
-            await FileStorageUseCase(redis=client).save(file=file)
-
-            await message.reply(
+            actions = await message.reply(
                 text=file_downloaded,
                 reply_markup=await file_worker.return_keyboard(file.file_type),
                 parse_mode="HTML"
             )
+
+            file.message_id = actions.message_id
+            await FileStorageUseCase(redis=client).save(file=file)
         except Exception as e:
             traceback.print_exc()
             await message.reply(text=file_download_error, parse_mode="HTML")

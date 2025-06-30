@@ -12,6 +12,7 @@ class FileType(Enum):
 @dataclass
 class File:
     user_id: int
+    message_id: Union[int, None]
     file_id: str
     file_path: Path
     file_type: FileType
