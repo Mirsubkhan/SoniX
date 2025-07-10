@@ -1,3 +1,5 @@
+import os
+
 from core.entities.file_dto import FileOutputDTO
 from abc import ABC, abstractmethod
 from numpy import ndarray
@@ -24,4 +26,8 @@ class FileHandler(ABC):
 
     @abstractmethod
     async def save_img_with_cv2(self, image: ndarray, fpath: Path) -> FileOutputDTO:
+        pass
+
+    @abstractmethod
+    async def delete_file(self, fpath: Path):
         pass

@@ -1,7 +1,12 @@
 import asyncio
+
+import torch
+
 from infrastructure.telegram.bot import create_dispatcher
 
 async def main():
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
     dp, bot = await create_dispatcher()
 
     try:
@@ -12,6 +17,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 

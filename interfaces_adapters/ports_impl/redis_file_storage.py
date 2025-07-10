@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import traceback
@@ -61,10 +62,6 @@ class RedisFileStorage(FileStorage):
         if raw:
             data = json.loads(raw)
             file_path = Path(data["file_path"])
-            if file_path.exists():
-                try:
-                    os.remove(file_path)
-                except Exception as e:
-                    traceback.print_exc()
+            await asyncio.to_thread(file_path.unlink, missing_ok=True)
             await self.redis.delete(key)
 

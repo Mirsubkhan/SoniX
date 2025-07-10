@@ -1,3 +1,5 @@
+import os
+
 from core.entities.file_dto import FileOutputDTO
 from core.ports.file_handler import FileHandler
 from numpy import ndarray
@@ -9,6 +11,9 @@ import cv2
 
 
 class FileIOHandler(FileHandler):
+    async def delete_file(self, fpath: Path):
+        await asyncio.to_thread(fpath.unlink, missing_ok=True)
+
     async def open_img(self, path: Path) -> Image:
         return await asyncio.to_thread(
             lambda: Image.open(fp=path).convert("RGB")

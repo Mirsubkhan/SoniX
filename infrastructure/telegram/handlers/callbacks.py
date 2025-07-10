@@ -1,3 +1,7 @@
+import asyncio
+import shutil
+from pathlib import Path
+
 from aiogram import Router
 from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardMarkup
 from application.use_cases.audio_extractor_use_case import AudioExtractorUseCase
@@ -49,8 +53,7 @@ def setup_handlers(
             await callback.message.answer(text=data_lost, parse_mode="HTML")
             return None, redis
         return file, redis
-
-    async def send_message(callback: CallbackQuery, text:str, keyboard: InlineKeyboardMarkup = None):
+    async def send_message(callback: CallbackQuery, text: str, keyboard: InlineKeyboardMarkup = None):
         return await callback.message.answer(
             text=text,
             reply_markup=keyboard,
@@ -58,20 +61,28 @@ def setup_handlers(
         )
 
     async def transcribe_demucs_process(redis, file: File, callback: CallbackQuery, event: str):
+        folder_path = None
         if event == "transcribe_with_demucs":
-            file_output = await handle_separate(callback=callback, file=file, event="", redis=redis)
-            await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
-            file.file_path = file_output.file_path.joinpath("vocals.mp3")
-            file.file_format = ".mp3"
-            file.file_type = FileType.AUDIO
-            await redis.save(file=file)
+            folder_path = await handle_separate(callback=callback, file=file, event="", redis=redis)
+            if folder_path:
+                new_file_path = folder_path / "vocals.mp3"
+                if new_file_path.exists():
+                    file = File(
+                        file_id="",
+                        message_id=callback.message.message_id,
+                        file_path=new_file_path,
+                        file_format=".mp3",
+                        file_type=FileType.AUDIO,
+                        user_id=file.user_id,
+                        file_duration=file.file_duration
+                    )
+                    await redis.save(file=file)
 
         await callback.message.answer(
             text=transcribe_options2,
             reply_markup=return_as_file_keyboard,
             parse_mode="HTML"
         )
-
     async def transcribe_whisper(redis, file: File, callback: CallbackQuery, return_as_txt: bool):
         edit_msg = await callback.message.answer(text=listening_file, parse_mode="HTML")
         progress_bar.bot = callback.bot
@@ -79,24 +90,32 @@ def setup_handlers(
         progress_bar.chat_id = callback.message.chat.id
         file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration, file_type=file.file_type)
 
-
         if return_as_txt:
-            file_output = await AudioTranscriberUseCase(transcriber=transcriber,
-                                                        extractor=AudioExtractorUseCase(extractor=extractor),
-                                                        f_handler=FileHandlerUseCase(
-                                                            file_repo=file_handler)).transcribe(file_input,
-                                                                                                on_progress=progress_bar.static_whisper_progress_callback)
-            await callback.message.answer_document(FSInputFile(file_output.file_path), caption=transcribe_ready,
-                                                   parse_mode="HTML")
+            file_output = await AudioTranscriberUseCase(
+                transcriber=transcriber,
+                extractor=AudioExtractorUseCase(extractor=extractor),
+                f_handler=FileHandlerUseCase(file_repo=file_handler)
+            ).transcribe(file_input, on_progress=progress_bar.static_whisper_progress_callback)
+
+            await callback.message.answer_document(
+                FSInputFile(file_output.file_path),
+                caption=transcribe_ready,
+                parse_mode="HTML"
+            )
             await callback.bot.delete_message(chat_id=edit_msg.chat.id, message_id=edit_msg.message_id)
+            return file_output.file_path
         else:
-            await AudioTranscriberUseCase(transcriber=transcriber, extractor=AudioExtractorUseCase(extractor=extractor),
-                                          f_handler=FileHandlerUseCase(file_repo=file_handler)).transcribe_dynamic(file_input,
-                                                                                                                   on_progress=progress_bar.dynamic_whisper_progress_callback)
-
-        await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
-
-    async def handle_separate(redis, file: File, callback: CallbackQuery, event: str=""):
+            await AudioTranscriberUseCase(
+                transcriber=transcriber,
+                extractor=AudioExtractorUseCase(extractor=extractor),
+                f_handler=FileHandlerUseCase(file_repo=file_handler)
+            ).transcribe_dynamic(
+                file_input,
+                on_progress=progress_bar.dynamic_whisper_progress_callback
+            )
+            await callback.message.answer("<b>Транскрипция готова! ☝️</b>", parse_mode="HTML")
+            return None
+    async def handle_separate(redis, file: File, callback: CallbackQuery, event: str = ""):
         edit_msg = await callback.message.answer(listening_file, parse_mode="HTML")
 
         progress_bar.bot = callback.bot
@@ -105,7 +124,8 @@ def setup_handlers(
         file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration, file_type=file.file_type)
         file_output = await AudioSeparatorUseCase(
             separator=separator,
-            extractor=AudioExtractorUseCase(extractor=extractor)).separate(
+            extractor=AudioExtractorUseCase(extractor=extractor)
+        ).separate(
             file_input, on_progress=progress_bar.demucs_progress_callback
         )
 
@@ -113,62 +133,69 @@ def setup_handlers(
 
         if not file_output:
             await callback.message.answer(demucs_error)
+            return None
 
         if event in ("no_vocals.mp3", "vocals.mp3"):
-            await callback.message.answer_document(FSInputFile(file_output.file_path.joinpath(event)))
-            await redis.delete_file_by_uid(callback.from_user.id)
+            target_file = file_output.file_path / event
+            if target_file.exists():
+                await callback.message.answer_document(FSInputFile(target_file))
+                return file_output.file_path
+            return None
 
-        return file_output
-
+        return file_output.file_path
     async def process_remove_bg(redis, callback: CallbackQuery, file: File):
         edit_msg = await callback.message.answer(removing_bg, parse_mode="HTML")
         file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
                                   file_type=file.file_type)
-        file_output = await (
-            BgRemoverUseCase(remover=bg_remover,
-            f_handler=FileHandlerUseCase(file_repo=file_handler)).remove_bg(f_input=file_input)
-        )
+        file_output = await BgRemoverUseCase(
+            remover=bg_remover,
+            f_handler=FileHandlerUseCase(file_repo=file_handler)
+        ).remove_bg(f_input=file_input)
 
         if file_output:
             await callback.message.answer_document(FSInputFile(file_output.file_path))
             await callback.bot.delete_message(message_id=edit_msg.message_id, chat_id=callback.message.chat.id)
-            await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
+            return file_output.file_path
         else:
             await callback.message.answer(bg_error)
-
+            return None
     async def process_ocr(redis, callback: CallbackQuery, file: File):
         edit_msg = await callback.message.answer(extracting_text, parse_mode="HTML")
         file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
                                   file_type=file.file_type)
-        file_output = await Image2TextUseCase(converter=image_text_extractor,
-                                              file_handler=FileHandlerUseCase(
-                                                  file_repo=file_handler)).image_to_text(f_input=file_input)
+        file_output = await Image2TextUseCase(
+            converter=image_text_extractor,
+            file_handler=FileHandlerUseCase(file_repo=file_handler)
+        ).image_to_text(f_input=file_input)
+
         if file_output:
-            await callback.message.answer(
-                text=f"<b>Результат:</b>\n<blockquote>{str(file_output.file_txt)}</blockquote>", parse_mode="HTML")
+            await callback.message.answer(text=f"{str(file_output.file_txt)}")
             await callback.message.answer_document(
-                caption=f"<b>Также для любителей файлов — результат в текстовом формате:</b>",
-                document=FSInputFile(file_output.file_path), parse_mode="HTML")
+                caption="<b>Также для любителей файлов — результат в текстовом формате:</b>",
+                document=FSInputFile(file_output.file_path),
+                parse_mode="HTML"
+            )
             await callback.bot.delete_message(message_id=edit_msg.message_id, chat_id=callback.message.chat.id)
-            await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
+            return file_output.file_path
         else:
             await callback.message.answer(ocr_error)
-
+            return None
     async def process_image_upscaling(redis, callback: CallbackQuery, file: File):
         edit_msg = await callback.message.answer(upscaling, parse_mode="HTML")
         file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
                                   file_type=file.file_type)
-        file_output = await ImageUpscalerUseCase(upscaler=upscaler,
-                                                 file_handler=FileHandlerUseCase(file_repo=file_handler)).upscale(
-            file=file_input)
+        file_output = await ImageUpscalerUseCase(
+            upscaler=upscaler,
+            file_handler=FileHandlerUseCase(file_repo=file_handler)
+        ).upscale(file=file_input)
 
         if file_output:
             await callback.message.answer_document(FSInputFile(file_output.file_path))
             await callback.bot.delete_message(message_id=edit_msg.message_id, chat_id=callback.message.chat.id)
-            await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
+            return file_output.file_path
         else:
             await callback.message.answer(realesrgan_error)
-
+            return None
     async def process_ascii(redis, callback: CallbackQuery, file: File):
         char_width = int(callback.data.split(":")[1].lower())
         file_input = FileInputDTO(file_path=file.file_path, file_duration=file.file_duration,
@@ -179,14 +206,16 @@ def setup_handlers(
         progress_bar.message_id = edit_msg.message_id
         progress_bar.chat_id = callback.message.chat.id
 
-        file_output = await ASCIIConverterUseCase(converter=ascii_converter,
-                                                  file_handler=FileHandlerUseCase(file_repo=file_handler)).convert(
-            f_input=file_input, char_width=char_width)
+        file_output = await ASCIIConverterUseCase(
+            converter=ascii_converter,
+            file_handler=FileHandlerUseCase(file_repo=file_handler)
+        ).convert(f_input=file_input, char_width=char_width)
 
         await callback.message.answer_document(FSInputFile(file_output.file_path), caption=ascii_ready,
                                                parse_mode="HTML")
         await callback.bot.delete_message(chat_id=edit_msg.chat.id, message_id=edit_msg.message_id)
-        await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
+
+        return file_output.file_path
 
     handle_actions = {
         "transcribe": lambda *args, **kwargs: send_message(*args, keyboard=transcribe_separate_options_keyboard,
@@ -194,10 +223,13 @@ def setup_handlers(
         "transform_to_ascii": lambda *args, **kwargs: send_message(*args, keyboard=transform_options_keyboard,
                                                                    text=ascii_options, **kwargs)
     }
-
     process_actions = {
-        "transcribe_with_demucs": lambda *args, **kwargs: transcribe_demucs_process(*args, event="transcribe_with_demucs", **kwargs),
-        "transcribe_without_demucs": lambda *args, **kwargs: transcribe_demucs_process(*args, event="transcribe_without_demucs", **kwargs),
+        "transcribe_with_demucs": lambda *args, **kwargs: transcribe_demucs_process(*args,
+                                                                                    event="transcribe_with_demucs",
+                                                                                    **kwargs),
+        "transcribe_without_demucs": lambda *args, **kwargs: transcribe_demucs_process(*args,
+                                                                                       event="transcribe_without_demucs",
+                                                                                       **kwargs),
         "transcribe_in_file": lambda *args, **kwargs: transcribe_whisper(*args, return_as_txt=True, **kwargs),
         "transcribe_in_chat": lambda *args, **kwargs: transcribe_whisper(*args, return_as_txt=False, **kwargs),
         "remove_bg": process_remove_bg,
@@ -216,13 +248,32 @@ def setup_handlers(
         await callback.answer()
 
         file, redis = await get_file_safe(callback=callback, full=True)
+        if not file:
+            return
+
         action, event = callback.data.lower().split(":")
+        temp_path = None
 
-        if action == "handle":
-            await handle_actions[event](callback=callback)
+        try:
+            if action == "handle":
+                await handle_actions[event](callback=callback)
+            elif action == "process" and event in process_actions:
+                temp_path = await process_actions[event](callback=callback, redis=redis, file=file)
+        finally:
+            if action == "process" and event in process_actions and event not in ("transcribe_without_demucs" or "transcribe_with_demucs"):
+                if file and file.file_path.exists():
+                    if "mdx_extra" in str(file.file_path):
+                        if not file.file_path.is_dir():
+                            file.file_path = file.file_path.parent
+                        await asyncio.to_thread(lambda: shutil.rmtree(file.file_path, ignore_errors=True))
 
-        elif action == "process" and event in process_actions:
-            await process_actions[event](callback=callback, redis=redis, file=file)
+                    else:
+                        await asyncio.to_thread(file.file_path.unlink, missing_ok=True)
 
+                if temp_path:
+                    if isinstance(temp_path, Path) and temp_path.exists():
+                        await asyncio.to_thread(temp_path.unlink, missing_ok=True)
+
+                await redis.delete_file_by_uid(user_id=callback.message.from_user.id)
 
     return router

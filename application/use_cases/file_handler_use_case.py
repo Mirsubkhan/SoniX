@@ -23,3 +23,6 @@ class FileHandlerUseCase:
 
     async def save_img_with_cv2(self, image: ndarray, fpath: Path) -> FileOutputDTO:
         return await self.file.save_img_with_cv2(image=image, fpath=fpath)
+
+    async def delete_file(self, fpath: Path):
+        await self.file.delete_file(fpath=fpath)

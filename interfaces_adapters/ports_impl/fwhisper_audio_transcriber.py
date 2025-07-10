@@ -1,3 +1,5 @@
+import torch
+
 from core.ports.audio_transcriber import AudioTranscriber, DynamicSSTCallback, STTCallback
 from core.entities.file_dto import FileInputDTO
 from faster_whisper import WhisperModel
@@ -6,7 +8,7 @@ import asyncio
 
 
 class FWhisperAudioTranscriber(AudioTranscriber):
-    def __init__(self, model_size="large-v3", compute_type="auto"):
+    def __init__(self, model_size="large-v3", compute_type="int8"):
         self.model = WhisperModel(
             model_size_or_path=model_size,
             compute_type=compute_type,
@@ -33,6 +35,7 @@ class FWhisperAudioTranscriber(AudioTranscriber):
 
             now = asyncio.get_event_loop().time()
             if now - last_time >= 2.0:
+                torch.cuda.empty_cache()
                 msg = current_text if len(current_text) <= 4096 else text_part
                 if msg != last_text_part:
                     await on_progress(msg, len(current_text) > 4096)
@@ -51,6 +54,7 @@ class FWhisperAudioTranscriber(AudioTranscriber):
             file_input: FileInputDTO,
             on_progress: Union[STTCallback, None]
     ) -> str:
+        torch.cuda.empty_cache()
         segments, _ = self._transcribe_segments(file_input)
         full_text = ""
 
@@ -93,5 +97,9 @@ class FWhisperAudioTranscriber(AudioTranscriber):
             str(file_input.file_path),
             patience=1,
             beam_size=5,
-            vad_filter=True
+            vad_filter=True,
+            chunk_length=30,
+            vad_parameters={
+                "min_silence_duration_ms": 50
+            }
         )

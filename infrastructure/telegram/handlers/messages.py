@@ -1,3 +1,5 @@
+import torch
+
 from infrastructure.telegram.bot_answers import loading_file, file_download_error, file_downloaded, unsupported_file
 from infrastructure.telegram.services.file_worker import TelegramFileWorker
 from application.use_cases.file_storage_use_case import FileStorageUseCase
@@ -11,6 +13,7 @@ import traceback
 def setup_handlers(router: Router, file_worker: TelegramFileWorker, client: FileStorage):
     @router.message(media_filter)
     async def media_handler(message: Message):
+        torch.cuda.empty_cache()
         edit_msg = await message.reply(text=loading_file, parse_mode="HTML")
 
         try:
